@@ -89,7 +89,7 @@ def run_switch(opts, start_time=None):
                                 if src == 'res100': arr=res100
                                 if src == 'short': arr=short
                                 if src == 'noise' : arr=noise
-				                if src == 'open' : arr=open
+				if src == 'open' : arr=open
                                 
                                 pin = srcs[src][0]
                                 ontime = float(srcs[src][1]) * 60.   # Convert to seconds
@@ -183,7 +183,7 @@ def read_temperatures(opts, start_time=None):
                         time_start = time.time()
                         #tstamp = datetime.datetime.utcnow().strftime('%Y%m%d_%H%M%S')
 			nm.array(time_start).tofile(f_pi_time)	
-			pi_temperature = subprocess.check_output('cat '+ptemp,shell=True)
+			pi_temperature = subprocess.check_output('cat '+opts.ptemp,shell=True)
                         my_tmp = nm.int32(pi_temperature)
 			nm.array(my_tmp).tofile(f_pi_temp)
 
@@ -196,21 +196,27 @@ def read_temperatures(opts, start_time=None):
                                 id = tempsensor[0]
                                 tag = tempsensor[1]
                                 # Replace device wildcard with actual sensor ID and do a read
-                                dfile = open(tdev.replace('*', id))
-                                txt = dfile.read()
-                                dfile.close()
+				try:
+                                	dfile = open(opts.tdev.replace('*', id))
+                                	txt = dfile.read()
+                                	dfile.close()
+				except:
+					txt = None
                                 # Search for e.g. "t=25345" string for temperature reading
-                                s = re.search(r't=(\d+)', txt)
-                                if s is not None:
-                                        temperature = float(s.group(1)) / 1000
-                                        nm.array(temperature).tofile(f_therms_temp[i])
-                                        print tag, '\t', temperature
+				temperature = nm.NAN
+				if txt is not None:
+                                	s = re.search(r't=(\d+)', txt)
+                                	if s is not None:
+                                        	temperature = float(s.group(1)) / 1000
+                                        	nm.array(temperature).tofile(f_therms_temp[i])
+                                print tag, '\t', temperature
 			time_stop = time.time()
 			nm.array(time_stop).tofile(f_therms_time_stop)
 
 			f_pi_temp.flush()
 			f_pi_time.flush()
-			f_therms_time.flush()
+			f_therms_time_start.flush()
+			f_therms_time_stop.flush()
                         for f in f_therms_temp:
                                 f.flush()
                         time.sleep(opts.temptime*60)
@@ -218,7 +224,8 @@ def read_temperatures(opts, start_time=None):
                 # Hmm, we weren't closing the files properly last year?
                 f_pi_temp.close()
                 f_pi_time.close()
-                f_therms_time.close()
+                f_therms_time_start.close()
+                f_therms_time_stop.close()
                 for f in f_therms_temp:
                         f.close()
         return
