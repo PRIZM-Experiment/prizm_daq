@@ -59,12 +59,10 @@ def run_switch(opts, start_time=None):
                 GPIO.output(pin, GPIO.LOW) # All pins set to LOW i.e. 0V
                 print 'GPIO pin', pin, 'set to output. Initial state:LOW'
         # Open log file
-        try:
-            
-            if start_time is None:
+        if start_time is None:
                 start_time = datetime.datetime.utcnow().strftime('%Y%m%d_%H%M%S')
         
-            while True:
+        while True:
                 tstart = time.time()
                 starttime = datetime.datetime.utcnow().strftime('%Y%m%d_%H%M%S')
                 if (tstart>1e5):
