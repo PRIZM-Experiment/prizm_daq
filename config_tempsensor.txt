@@ -1,0 +1,22 @@
+# Config file for temperature sensors: serial number, one-word tag,
+# longer human-friendly description
+
+28-000007a17188, 70_ambient,	70 MHz ambient sensor (mounted on side B)
+28-000007a0406d, 70A_top_lna,	70 MHz side A top LNA
+28-000007a1d71c, 70A_bot_lna,	70 MHz side A bottom LNA
+28-000007a10a52, 70A_switch,	70 MHz side A switch
+28-0000079fc869, 70A_noise,	70 MHz side A noise diode
+28-000007a05bc0, 70B_top_lna,	70 MHz side B top LNA
+28-000007a16f70, 70B_bot_lna,	70 MHz side B bottom LNA
+28-000007a20adc, 70B_switch,	70 MHz side B switch
+28-000007a0bad0, 70B_noise,	70 MHz side B noise diode
+28-000007a1451a, 100_ambient,	100 MHz ambient sensor (mounted on side B)
+28-000007a22582, 100A_top_lna,	100 MHz side A top LNA
+28-000007a12463, 100A_bot_lna,	100 MHz side A bottom LNA
+28-000007a015df, 100A_switch,	100 MHz side A switch
+28-0000079fff75, 100A_noise,	100 MHz side A noise diode
+28-000007a11f31, 100B_top_lna,	100 MHz side B top LNA
+28-000007a212d1, 100B_bot_lna,	100 MHz side B bottom LNA
+28-000007a14004, 100B_switch,	100 MHz side B switch
+28-000007a0f339, 100B_noise,	100 MHz side B noise diode
+28-021600a744ff, snapbox,	SNAP box ambient danglemometer
