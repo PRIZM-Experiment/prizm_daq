@@ -13,10 +13,10 @@ for freq in ['70', '100']:
         print 'Running DAQ for', freq, 'MHz antenna'
         if compress:
             print 'Output data file compression is ON'
-            cmd = 'python scihi_daq_2017.py --bof extadc_snap_spec_2017-03-24_1035.bof --nchan 4096 -o '+path+' -l '+path+'/log -t 15 --compress bzip2 --diff 1 --ip localhost'
+            cmd = 'python prizm_daq_2018.py --bof extadc_snap_spec_2017-03-24_1035.bof --nchan 4096 -o '+path+' -l '+path+'/log -t 15 --compress bzip2 --diff 1 --ip localhost'
         else:
             print 'Output data file compression is OFF'
-            cmd = 'python scihi_daq_2017.py --bof extadc_snap_spec_2017-03-24_1035.bof --nchan 4096 -o '+path+' -l '+path+'/log -t 15 --ip localhost'
+            cmd = 'python prizm_daq_2018.py --bof extadc_snap_spec_2017-03-24_1035.bof --nchan 4096 -o '+path+' -l '+path+'/log -t 15 --ip localhost'
         os.system(cmd)
         exit(0)
 
