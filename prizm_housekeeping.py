@@ -111,10 +111,6 @@ def run_switch(opts, start_time=None):
                                 t_stop=time.time()
                                 arr.append(nm.array([0,t_stop]))
                                 
-        except KeyboardInterrupt:
-            print 'Keyboard Interrupt : Cleaning all used GPIOs'
-            GPIO.cleanup()
-            print 'All used GPIOs cleaned'
         return
 
 #=======================================================================
@@ -304,5 +300,11 @@ if __name__ == '__main__':
             # Arbitrary infinite sleep to keep the above threads running
             while True:
                     time.sleep(10)
+
+    except KeyboardInterrupt:
+            print 'Keyboard Interrupt : Cleaning all used GPIOs'
+            GPIO.cleanup()
+            print 'All used GPIOs cleaned'
+
     finally:
             logging.info('Observation ended: %s'%str(time.time()))
