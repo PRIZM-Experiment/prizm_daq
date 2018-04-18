@@ -45,7 +45,7 @@ def run_switch(opts, start_time=None):
                 'res50' : opts.res50,
                 'short' : opts.short,
                 'noise' : opts.noise,
-                'opn' : opts.open}
+                'open' : opts.open}
 
         # Set GPIO mode for all selected sources
         GPIO.setmode(GPIO.BCM)
@@ -284,8 +284,8 @@ if __name__ == '__main__':
     logging.info('100 ohm resistor - pin, # minutes: '+str(opts.res100)+'\n' )
     logging.info('50 ohm resistor - pin, # minutes: '+str(opts.res50)+'\n')
     logging.info('Short - pin, # minutes: '+str(opts.short)+'\n')
-	logging.info('Noise - pin, # minutes: '+str(opts.noise)+'\n')
-	logging.info('Open - pin, # minutes: '+str(opts.open)+'\n')   
+    logging.info('Noise - pin, # minutes: '+str(opts.noise)+'\n')
+    logging.info('Open - pin, # minutes: '+str(opts.open)+'\n')   
     logging.info('Pi temperature location: '+opts.ptemp+'\n')
     logging.info('One-wire temp sensor device location: '+opts.tdev+'\n')
     logging.info('One-wire temp sensor config file: '+opts.tconf+'\n')
