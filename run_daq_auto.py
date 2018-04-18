@@ -25,7 +25,7 @@ path = '/home/pi/switch_data'
 if os.path.exists(path):
     print 'Found data path', path
     print 'Running switch control and housekeeping script'
-    os.system('python prizm_housekeeping.py -o "antenna","res100","res50","short","noise","opn" -a 23,0.05 -R 24,0.05 -r 25,0.05 -s 7,0.05 -n 8,1 -O 12,0.05 --reset 18 -m 21 -t 1 -c config_tempsensor.txt')
+    os.system('python prizm_housekeeping.py -o "antenna","res50","short","noise","res100","open" -a 23,0.05 -r 24,0.05 -s 25,0.05 -n 5,0.05 -R 26,1 -O 12,0.05 --reset 18 -m 21 -t 1 -c config_tempsensor.txt')
     exit(0)
 
 # We shouldn't get to this point

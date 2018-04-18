@@ -232,19 +232,19 @@ if __name__ == '__main__':
     parser.set_usage('switch_control.py [options]')
     parser.set_description(__doc__)
     #parser.add_option('-l', '--logdir', dest='logdir',type='str', default='/data/housekeeping',help='Log directory [default: %default]')
-    parser.add_option('-o', '--order', dest='seq',type='string', default=['antenna','res100','res50','short','noise','opn'],
+    parser.add_option('-o', '--order', dest='seq',type='string', default=['antenna','res50','short','noise','res100','open'],
         	      help='Desired switch sequence of sources, options are "antenna", "res100", "res50", "short", "noise", "open" [default: %default]',
                       action='callback', callback=seq_callback)
     parser.add_option('--reset', dest='reset', type='int', help='Reset GPIO pin # : 18')
     parser.add_option('-a', '--antenna', dest='antenna', type='string',default=[23,10],
 		      help='Antenna: GPIO pin # and # of minutes [default: %default]', action='callback', callback=src_callback)
-    parser.add_option('-R', '--res100', dest='res100', type='string',default=[7,1],
+    parser.add_option('-R', '--res100', dest='res100', type='string',default=[26,1],
 		      help='100 ohm resistor: GPIO pin # and # of minutes [default: %default]', action='callback', callback=src_callback)
     parser.add_option('-r', '--res50', dest='res50', type='string',default=[24,1],
 		      help='50 ohm resistor: GPIO pin # and # of minutes [default: %default]', action='callback', callback=src_callback)
     parser.add_option('-s', '--short', dest='short', type='string',default=[25,1],
 		      help='Short: GPIO pin # and # of minutes [default: %default]', action='callback', callback=src_callback)
-    parser.add_option('-n', '--noise', dest='noise', type='string',default=[8,1],
+    parser.add_option('-n', '--noise', dest='noise', type='string',default=[5,1],
 		      help='Noise: GPIO pin # and # of minutes [default: %default]', action='callback', callback=src_callback)
     parser.add_option('-O', '--open', dest='open', type='string',default=[12,1],
 		      help='Open: GPIO pin # and # of minutes [default: %default]', action='callback', callback=src_callback)
@@ -283,7 +283,9 @@ if __name__ == '__main__':
     logging.info('Antenna - pin, # minutes: '+str(opts.antenna)+'\n')
     logging.info('100 ohm resistor - pin, # minutes: '+str(opts.res100)+'\n' )
     logging.info('50 ohm resistor - pin, # minutes: '+str(opts.res50)+'\n')
-    logging.info('Short - pin, # minutes: '+str(opts.short)+'\n')   
+    logging.info('Short - pin, # minutes: '+str(opts.short)+'\n')
+	logging.info('Noise - pin, # minutes: '+str(opts.noise)+'\n')
+	logging.info('Open - pin, # minutes: '+str(opts.open)+'\n')   
     logging.info('Pi temperature location: '+opts.ptemp+'\n')
     logging.info('One-wire temp sensor device location: '+opts.tdev+'\n')
     logging.info('One-wire temp sensor config file: '+opts.tconf+'\n')
