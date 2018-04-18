@@ -302,9 +302,11 @@ if __name__ == '__main__':
                     time.sleep(10)
 
     except KeyboardInterrupt:
-            print 'Keyboard Interrupt : Cleaning all used GPIOs'
-            GPIO.cleanup()
-            print 'All used GPIOs cleaned'
+            print '==================================================='
+            print 'Keyboard Interrupt : All used GPIOs will be cleaned'
 
     finally:
             logging.info('Observation ended: %s'%str(time.time()))
+            GPIO.cleanup()
+            print 'All used GPIOs cleaned'
+            print '==================================================='
