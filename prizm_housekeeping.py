@@ -1,4 +1,4 @@
-#!/usr/bin/python
+#!/usr/bin/env /usr/bin/python
 import datetime, time, os, sys, thread, re, logging
 import numpy as nm
 import RPi.GPIO as GPIO
@@ -71,8 +71,9 @@ def run_switch(opts, start_time=None):
                         print 'warning in run_switch - tstart seems to be near zero.  Did you set your clock?'
                         tfrag='00000'
                 outsubdir = opts.outdir + '/' + tfrag + '/' + str(nm.int64(tstart))
-                if not os.path.exists(outsubdir):
+                if not os.path.isdir(outsubdir):
                         os.makedirs(outsubdir)
+                
                 compress=opts.compress
                 antenna =  scio.scio(outsubdir+'/antenna.scio',compress=compress)
                 res50 =  scio.scio(outsubdir+'/res50.scio',compress=compress)
@@ -108,7 +109,7 @@ def run_switch(opts, start_time=None):
                                 if src == 'noise': GPIO.output(21,0); print 'mosfet off'
                                 t_stop=time.time()
                                 arr.append(nm.array([0,t_stop]))
-                                
+                                sys.stdout.flush()
         return
 
 #=======================================================================
@@ -213,6 +214,7 @@ def read_temperatures(opts, start_time=None):
 			f_therms_time_stop.flush()
                         for f in f_therms_temp:
                                 f.flush()
+			sys.stdout.flush()
                         time.sleep(opts.temptime*60)
 
                 # Hmm, we weren't closing the files properly last year?
@@ -296,6 +298,8 @@ if __name__ == '__main__':
             # Start up switch operations and temperature logging, use same starting time stamp for both
             start_time = datetime.datetime.utcnow().strftime('%Y%m%d_%H%M%S')
             p1 = thread.start_new_thread( run_switch, (opts, start_time) )
+            # Tiny sleep statement to avoid directory creation collision
+            time.sleep(2)
             p2 = thread.start_new_thread( read_temperatures, (opts, start_time))
             # Arbitrary infinite sleep to keep the above threads running
             while True:
