@@ -1,0 +1,50 @@
+Intro
+=====
+
+This directory contains all the scripts and configuration files needed
+to run the PRIZM DAQ using supervisord.  When running in supervised
+mode, the SNAP and housekeeping RPIs will automatically start DAQ
+processes as soon as they boot, and supervisord will ensure that those
+processes stay alive and are restarted in the event of a crash.  If
+there are too many crashes on an RPi, it will reboot and attempt
+starting the DAQ again.
+
+Before doing anything, make sure supervisord and dependencies are
+installed on the RPi.  In principle, you should only need meld3 and
+supervisord itself.  The software packages are saved on the PRIZM
+laptop under ~/software/meld3-1.0.2.tar.gz and
+~/software/supervisor-master.zip.  Unpack these into /usr/local/src
+and install both with "sudo python setup.py install".
+
+By default, the scripts below are configured to write log files to
+~/supervisord_logs.  Ensure that this directory exists.
+
+
+Contents of this directory
+==========================
+
+./run_daq_supervised.py :
+Main top-level script.  This is the supervisord equivalent of
+run_daq_auto.py and automatically figures out which Pi we're on and
+which DAQ command to run.  Rather than invoking the DAQ directly, this
+script is a wrapper for calling "supervisord -c <file.config>".
+
+./kill_daq_supervised.py :
+General script for killing all instances of supervisord and the PRIZM
+DAQ in case there are stray processes.  Use this script to ensure
+complete process termination.
+
+supervisord_[70MHz,100MHz,housekeeping].conf :
+Supervisord configuration files.  These contain the actual DAQ
+commands that are called -- keep an eye out for semi-hardwired
+absolute paths.
+
+./prizm_daq_listener.py :
+Supervisord listener script used by the above configuration files.
+Listens for crashes and executes a reboot command if too many crashes
+have accumulated.  The default setting is 5 crashes before reboot.
+
+./rc.local :
+Example rc.local file for executing run_daq_supervised.py
+automatically upon boot.  Copy the relevant lines into /etc/rc.local
+(and ensure that the file ends with the exit(0) statement).
