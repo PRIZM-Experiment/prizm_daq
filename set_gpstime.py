@@ -13,7 +13,7 @@ def read_rtc_datetime():
     ser = serial.Serial()
     ser.port = "/dev/ttyUSB0"  #USB
     ser.baudrate = 9600
-    ser.timeouti = 1
+    ser.timeout = 1
     ser.open()
 
     # Define the required NMEA sentences
