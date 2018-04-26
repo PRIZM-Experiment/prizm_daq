@@ -87,23 +87,34 @@ def initialize_snap(snap_ip, opts, timeout=10, loglevel=50):
 	        exit_fail()
 	bof=opts.boffile
 	fpga.progdev(bof)
-	adc=iadc.Iadc(fpga)
-	adc.set_dual_input()
 	print 'Board clock is', fpga.est_brd_clk() #Board clock should be 1/4 of the sampling clock (board clock=125 MHz)                                                                                         adc.set_data_mode() 
+
+        regs = fpga.listdev()
+
+        # Use iadc only if we're running PRIZM firmware, not single SNAP
+        if 'even_pol0' in regs:
+		adc=iadc.Iadc(fpga)
+		adc.set_dual_input()
 
         logger.info('Configuring accumulation period...')
         fpga.write_int('acc_len', opts.acc_len)
-        # fpga.write_int('fft_shift', 0x00000000)  # verified fft_of = 1 all the time
-        # fpga.write_int('fft_shift', 0xF0F0F0F0)  # fft_of = 1 ~80% of the time
-        # fpga.write_int('fft_shift', 0xFFF0F0FF)  # fft_of = 0 100% of the time
-        # fpga.write_int('fft_shift', 0xF0F0F0FF)  # fft_of = 0 100% of the time
-        # fpga.write_int('fft_shift', 0xF0F0F0F8)  # fft_of = 0 90% of the time
-        # fpga.write_int('fft_shift', 0x80808088)  # fft_of = 1 100% of the time
-        # fpga.write_int('fft_shift', 0xC0C0C0C8)  # fft_of = 1 100% of the time
-        # fpga.write_int('fft_shift', 0xE0E0E0E8)  # fft_of = 1 100% of the time
-        # fpga.write_int('fft_shift', 0xF0F0F0FF)  # fft_of = 0 90% of the time
-        # As of 4 May 2017, above value is dead to us.
-        fpga.write_int('fft_shift', 0xFFFFFFFF)  # fft_of = 0 90% of the time
+        logger.info('Setting fft shift...')
+        # Different register names for different firmware versions
+        if 'fft_shift' in regs:
+                # fpga.write_int('fft_shift', 0x00000000)  # verified fft_of = 1 all the time
+                # fpga.write_int('fft_shift', 0xF0F0F0F0)  # fft_of = 1 ~80% of the time
+                # fpga.write_int('fft_shift', 0xFFF0F0FF)  # fft_of = 0 100% of the time
+                # fpga.write_int('fft_shift', 0xF0F0F0FF)  # fft_of = 0 100% of the time
+                # fpga.write_int('fft_shift', 0xF0F0F0F8)  # fft_of = 0 90% of the time
+                # fpga.write_int('fft_shift', 0x80808088)  # fft_of = 1 100% of the time
+                # fpga.write_int('fft_shift', 0xC0C0C0C8)  # fft_of = 1 100% of the time
+                # fpga.write_int('fft_shift', 0xE0E0E0E8)  # fft_of = 1 100% of the time
+                # fpga.write_int('fft_shift', 0xF0F0F0FF)  # fft_of = 0 90% of the time
+                # As of 4 May 2017, above value is dead to us.
+                fpga.write_int('fft_shift', 0xFFFFFFFF)  # fft_of = 0 90% of the time
+        elif 'pfb0_fft_shift' in regs and 'pfb1_fft_shift' in regs:
+                fpga.write_int('pfb0_fft_shift', 0xFFFF)
+                fpga.write_int('pfb1_fft_shift', 0xFFFF)
         logger.info('Done configuring')
 
         time.sleep(2)
@@ -119,9 +130,9 @@ def get_fpga_temp(fpga):
         return (x >> 4) * 503.975 / 4096. - 273.15
 
 #=======================================================================
-def read_pol_data(fpga,ndat):
+def read_data_prizm(fpga,ndat):
 	nn=ndat/2;
-        #assert(nn==1024) #if we fail this, we need to update a whole bunch of sizes below...                                                                                                               
+        #assert(nn==1024) #if we fail this, we need to update a whole bunch of sizes below...
 	mystr='>'+repr(nn)
 	#print mystr
 	mystrq=mystr+'q'
@@ -148,7 +159,7 @@ def read_pol_data(fpga,ndat):
 	return pol0,pol1,real_cross,im_cross
 
 #=======================================================================
-def acquire_data_2017(fpga,opts,ndat=2048,wait_for_new=True):
+def acquire_data_prizm(fpga,opts,ndat=2048,wait_for_new=True):
 	nn=ndat/2;
 	#assert(nn==1024) #if we fail this, we need to update a whole bunch of sizes below...
 	while True:
@@ -185,7 +196,7 @@ def acquire_data_2017(fpga,opts,ndat=2048,wait_for_new=True):
                 f_ab_imag=scio.scio(outsubdir+'/cross_imag.scio',diff=diff,compress=compress)
 
                 while time.time()-tstart < opts.tfile*60:		
-                        if wait_for_new and opts.sim is None:
+                        if wait_for_new:
                                 acc_cnt_old = fpga.read_int('acc_cnt')
                                 while True:
                                         acc_cnt_new = fpga.read_int('acc_cnt')
@@ -206,7 +217,7 @@ def acquire_data_2017(fpga,opts,ndat=2048,wait_for_new=True):
                         fft_of_cnt= fpga.read_int('fft_of')  #this used to be fft_of_cnt
                         sys_clk1= fpga.read_int('sys_clkcounter')
                         sync_cnt1=fpga.read_int('sync_cnt')
-			pol0,pol1,cross_real,cross_im=read_pol_data(fpga,ndat)
+			pol0,pol1,cross_real,cross_im=read_data_prizm(fpga,ndat)
 			acc_cnt_end = fpga.read_int('acc_cnt')
 			sys_clk2=fpga.read_int('sys_clkcounter') 
 			sync_cnt2=fpga.read_int('sync_cnt') 
@@ -256,6 +267,154 @@ def acquire_data_2017(fpga,opts,ndat=2048,wait_for_new=True):
 		#return
 
 #=======================================================================
+def read_data_singlesnap(fpga, ndat, npol=4):
+
+        #assert(ndat==2048) #if we fail this, we need to update a whole bunch of sizes below...
+	mystr='>'+repr(ndat)
+	mystrq=mystr+'q'
+
+        alldat = {}
+        for ipol in range(npol):
+                for jpol in range(ipol, npol):
+                        if ipol == jpol:
+                                regs = ['pol'+str(ipol)+str(jpol)]
+                        else:
+                                regs = ['pol'+str(ipol)+str(jpol)+'r', 'pol'+str(ipol)+str(jpol)+'i']
+                        for reg in regs:
+				# This line is from Jack's code but is giving us an unknown dtype error
+				# dat = nm.fromstring(fpga.read(reg,ndat*8),dtype='>i8')
+				dat = nm.fromstring(fpga.read(reg,ndat*8),dtype='i8')
+				dat = dat.newbyteorder()
+				dat = nm.asarray(dat, dtype='int64')
+                                # Forcing type casting to int64 because numpy tries to be
+                                # "smart" about casting to int32 if there are no explicit long
+                                # ints.
+                                # xxx DOUBLE CHECK THIS, MIGHT NOT NEED INT64
+                                # dat = nm.array(struct.unpack(mystrq,fpga.read(reg,ndat*8,0)),dtype='int64')
+                                alldat[reg] = dat
+	return alldat
+
+#=======================================================================
+def acquire_data_singlesnap(fpga,opts,npol=4,ndat=2048,wait_for_new=True):
+	while True:
+		tstart = time.time()
+		if (tstart>1e5):
+			tfrag=repr(tstart)[:5]
+		else:
+			print 'warning in acquire_data - tstart seems to be near zero.  Did you set your clock?'
+			tfrag='00000'
+		outsubdir = opts.outdir+'/'+tfrag +'/' + str(nm.int64(tstart))
+                os.makedirs(outsubdir)
+                logging.info('Writing current data to %s' %(outsubdir))
+
+		f_sys_timestamp1 = open(outsubdir+'/time_sys_start.raw','w')
+		f_sys_timestamp2 = open(outsubdir+'/time_sys_stop.raw','w')
+		f_rtc_timestamp1 = open(outsubdir+'/time_rtc_start.raw','w')
+		f_rtc_timestamp2 = open(outsubdir+'/time_rtc_stop.raw','w')
+		f_pfb0_fft_shift = open(outsubdir+'/pfb0_fft_shift.raw','w')
+		f_pfb1_fft_shift = open(outsubdir+'/pfb1_fft_shift.raw','w')
+		f_pfb0_fft_of = open(outsubdir+'/pfb0_fft_of.raw','w')
+		f_pfb1_fft_of = open(outsubdir+'/pfb1_fft_of.raw','w')
+		f_acc_cnt1 = open(outsubdir+'/acc_cnt1.raw','w')
+		f_acc_cnt2 = open(outsubdir+'/acc_cnt2.raw','w')
+		f_sys_clk1 = open(outsubdir+'/sys_clk1.raw','w')
+		f_sys_clk2 = open(outsubdir+'/sys_clk2.raw','w')
+		f_sync_cnt1 = open(outsubdir+'/sync_cnt1.raw','w')
+		f_sync_cnt2 = open(outsubdir+'/sync_cnt2.raw','w')
+                f_pi_temp = open(outsubdir+'/pi_temp.raw','w')                
+		f_fpga_temp = open(outsubdir+'/fpga_temp.raw','w')
+
+                # File handles for all auto and cross pol data
+		diff=not(opts.diff==0)
+                compress=opts.compress
+                f_poldat = {}
+                for ipol in range(npol):
+                        for jpol in range(ipol,npol):
+                                if ipol == jpol:
+                                        regs = ['pol'+str(ipol)+str(jpol)]
+                                else:
+                                        regs = ['pol'+str(ipol)+str(jpol)+'r', 'pol'+str(ipol)+str(jpol)+'i']
+                                for reg in regs:
+                                        f_poldat[reg] = scio.scio(outsubdir+'/'+reg+'.scio',diff=diff,compress=compress)
+
+                while time.time()-tstart < opts.tfile*60:		
+                        if wait_for_new:
+                                acc_cnt_old = fpga.read_int('acc_cnt')
+                                while True:
+                                        acc_cnt_new = fpga.read_int('acc_cnt')
+                                        # Ryan's paranoia: avoid possible reinitialization
+                                        # crap from first spectrum accumulation
+                                        if acc_cnt_new >= acc_cnt_old + 2:
+                                                break
+                                        time.sleep(0.1)
+
+                        # Time stamp at beginning of read commands.
+                        # Reading takes a long time (and there are
+                        # sometimes timeouts), so keep track of time
+                        # stamps for both start and end of reads.
+                        t1_sys = time.time()
+                        t1_rtc = read_rtc_datetime()
+
+                        pfb0_fft_shift=fpga.read_uint('pfb0_fft_shift')
+                        pfb1_fft_shift=fpga.read_uint('pfb1_fft_shift')
+                        pfb0_fft_of= fpga.read_int('pfb0_fft_of')
+                        pfb1_fft_of= fpga.read_int('pfb1_fft_of')
+                        sys_clk1= fpga.read_int('sys_clkcounter')
+                        sync_cnt1=fpga.read_int('sync_cnt')
+			poldat=read_data_singlesnap(fpga,ndat,npol)
+			acc_cnt_end = fpga.read_int('acc_cnt')
+			sys_clk2=fpga.read_int('sys_clkcounter') 
+			sync_cnt2=fpga.read_int('sync_cnt') 
+
+			t2_sys = time.time()
+			t2_rtc = read_rtc_datetime()
+			print 'elapsed system time is ',t2_sys-t1_sys
+			if acc_cnt_new != acc_cnt_end:
+				logging.warning('Accumulation changed during data read')
+			regs = f_poldat.keys()
+			regs.sort()
+                        for reg in regs:
+                                f_poldat[reg].append(poldat[reg])
+                        temperature=subprocess.check_output('cat /sys/class/thermal/thermal_zone0/temp',shell=True)
+                        fpga_tmp = get_fpga_temp(fpga)
+			my_tmp=nm.int32(temperature)
+                        nm.array(my_tmp).tofile(f_pi_temp)
+                        nm.array(fpga_tmp).tofile(f_fpga_temp)
+			nm.array(t1_sys).tofile(f_sys_timestamp1)
+			nm.array(t2_sys).tofile(f_sys_timestamp2)
+			nm.array(t1_rtc).tofile(f_rtc_timestamp1)
+			nm.array(t2_rtc).tofile(f_rtc_timestamp2)
+			nm.array(pfb0_fft_shift).tofile(f_pfb0_fft_shift)
+			nm.array(pfb1_fft_shift).tofile(f_pfb1_fft_shift)
+			nm.array(pfb0_fft_of).tofile(f_pfb0_fft_of)
+			nm.array(pfb1_fft_of).tofile(f_pfb1_fft_of)
+			nm.array(sys_clk1).tofile(f_sys_clk1)
+			nm.array(sys_clk2).tofile(f_sys_clk2)
+			nm.array(sync_cnt1).tofile(f_sync_cnt1)
+			nm.array(sync_cnt2).tofile(f_sync_cnt2)
+			nm.array(acc_cnt_end).tofile(f_acc_cnt2)
+			nm.array(acc_cnt_new).tofile(f_acc_cnt1)
+			f_sys_timestamp1.flush()
+			f_sys_timestamp2.flush()
+			f_rtc_timestamp1.flush()
+			f_rtc_timestamp2.flush()
+                        f_pfb0_fft_shift.flush()
+                        f_pfb1_fft_shift.flush()
+                        f_pfb0_fft_of.flush()
+                        f_pfb1_fft_of.flush()
+                        f_pi_temp.flush()
+                        f_fpga_temp.flush()
+                        f_acc_cnt1.flush()
+			f_acc_cnt2.flush()
+                        f_sys_clk1.flush()
+                        f_sys_clk2.flush()
+                        f_sync_cnt1.flush()
+			f_sync_cnt2.flush()
+
+                        time.sleep(opts.wait)
+		#return
+
+#=======================================================================
 if __name__ == '__main__':
 
         # Parse options
@@ -271,16 +430,16 @@ if __name__ == '__main__':
 		          help='Log directory [default: %default]')
 	parser.add_option('-p', '--port', dest='port',type='int', default=7147,
 		          help='Port number [default: %default]')
-	parser.add_option('-c', '--channel', dest='channel',type='string', default=[0,1],
-		          help='ADC channels as comma separated list [default: %default]',
-                          action='callback', callback=channel_callback)
+	# parser.add_option('-c', '--channel', dest='channel',type='string', default=[0,1],
+	# 	          help='ADC channels as comma separated list [default: %default]',
+        #                   action='callback', callback=channel_callback)
 	parser.add_option('-a', '--acc_len', dest='acc_len', type='int',default=2*(2**28)/2048,
 		          help='Number of vectors to accumulate between dumps [default: %default]')
 	parser.add_option('-t', '--tfile', dest='tfile', type='int',default=15,
 		          help='Number of minutes of data in each file subdirectory [default: %default]')
         parser.add_option('-T','--tar',dest='tar',type='int',default=0,help='Tar up directories at end (non-zero for true)')
 	parser.add_option('-n', '--nchan', dest='nchan', type='int',default=2048,
-		          help='Number of minutes of data in each file subdirectory [default: %default]')
+		          help='Spectrum length [default: %default]')
 	parser.add_option('-w', '--wait', dest='wait', type='int',default=0,
 		          help='Number of seconds to wait between taking spectra [default: %default]')
 	parser.add_option('-i', '--ip', dest='ip', type='str',default=None,
@@ -313,8 +472,9 @@ if __name__ == '__main__':
 
         # Save run-time options to file
         logging.info('======= Run-time options =======')
-        logging.info('ADC channel selection: %s' %(opts.channel))
+	logging.info('Boffile: %s' % (opts.boffile))
         logging.info('Accumulate length: %d' %(opts.acc_len))
+        logging.info('# channels: %d' %(opts.nchan))
         logging.info('Minutes per file: %d' %(opts.tfile))
         logging.info('Seconds between spectra: %d' %(opts.wait))
 	logging.info('Comment: %s' % (opts.comment))
@@ -324,10 +484,26 @@ if __name__ == '__main__':
         fpga = None
         fpga = initialize_snap(opts.ip, opts)
 	time.sleep(5)
+
+        # Try to figure out what kind of DAQ we should run
+        regs = fpga.listdev()
+        if 'even_pol0' in regs:
+                daq = 'prizm'
+        elif 'pol00' in regs:
+                daq = 'singlesnap'
+        else:
+                print 'I could not identify which DAQ to run, sorry...'
+                exit(0)
         
         # Acquire data
         logging.info('Writing data to top level location %s' %(opts.outdir))
 	try:
-	        acquire_data_2017(fpga,opts,nchan)
+                if daq is 'prizm':
+	                acquire_data_prizm(fpga, opts, ndat=opts.nchan)
+                elif daq is 'singlesnap':
+                        acquire_data_singlesnap(fpga, opts, ndat=opts.nchan)
+                else:
+                        print 'Halp, unknown DAQ type'
+                        exit(0)
 	finally:
 		logging.info('Terminating DAQ script at %s' % str(time.time()))
