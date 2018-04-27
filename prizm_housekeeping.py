@@ -1,10 +1,10 @@
 #!/usr/bin/env /usr/bin/python
-import datetime, time, os, sys, thread, re, logging
+import datetime, time, os, sys, thread, re, logging, subprocess, serial
+import scio
 import numpy as nm
 import RPi.GPIO as GPIO
 from optparse import OptionParser
-import scio
-import subprocess
+from pynmea import nmea
 
 # Code for PRIZM housekeeping that does the following:
 # - Switch control.  Automatically cycle between sources by
@@ -29,6 +29,48 @@ def src_callback(option, opt, value, parser):
         setattr(parser.values, option.dest, [int(vals[0]), float(vals[1])])
         return
                                                         
+#=========================================================
+def read_rtc_datetime(port="/dev/ttyUSB0", ctime=True):
+    """Read date and time from the RTC from a serial connection
+    """
+    # Open a serial connection
+    ser = serial.Serial()
+    ser.port = port
+    ser.baudrate = 9600
+    ser.timeout = 1
+    try:
+            ser.open()
+    except:
+            # I'm guessing this function will fail occasionally
+            # because of collisions between the 3 RPis.  As long as we
+            # get an occasional heartbeat, we can use system time to
+            # interpolate.
+            return nm.NAN
+
+    # Define the required NMEA sentences
+    gpgga = nmea.GPGGA()  # time information
+    gprmc = nmea.GPRMC()  # date information
+
+    time_stamp = None
+    date_stamp = None
+
+    while time_stamp is None or date_stamp is None:
+        data = ser.readline()
+        if data[0:6] == '$GPGGA':
+            gpgga.parse(data)
+            time_stamp = str(int(nm.round(float(gpgga.timestamp))))
+        if data[0:6] == '$GPRMC':  
+            gprmc.parse(data)
+            date_stamp = str(gprmc.datestamp)
+    ser.close()
+
+    dtstamp = datetime.datetime.strptime(time_stamp+' '+date_stamp, '%H%M%S %d%m%y')
+    if ctime:
+            epoch = datetime.datetime.utcfromtimestamp(0)
+            return (dtstamp - epoch).total_seconds() * 1000.0
+    else:
+            return dtstamp
+
 #=======================================================================
 def run_switch(opts, start_time=None):
         """Run the switch.  Cycle between sources by turning on appropriate
@@ -97,16 +139,26 @@ def run_switch(opts, start_time=None):
                                 GPIO.output(opts.reset,1)
                                 time.sleep(0.20)
                                 GPIO.output(opts.reset,0);time.sleep(0.20);print 'Reset off'
-                                if src == 'noise': GPIO.output(21,1); print 'mosfet on'
+                                # Special case for noise source: need to turn mosfet on as well
+                                if src == 'noise': GPIO.output(opts.mosfet,1); print 'mosfet on'
+                                # Set switch to the appropriate
+                                # source.  These are latching
+                                # switches, so just need to pulse the
+                                # pin...
                                 GPIO.output(pin,1);print '%s Src On'%src
                                 time.sleep(0.20)
+                                # ...and then immediately turn off again
                                 print '%s Src Off'%src
                                 GPIO.output(pin,0)
-                               # if src == 'noise': GPIO.output(21,0); print 'mosfet off'
+                                # Record time stamps for how long
+                                # we're on this switch position.  Note
+                                # that we're using system time here,
+                                # will need to correct with RTC time
+                                # in post-processing.
                                 t_start=time.time()
                                 arr.append(nm.array([1,t_start])) 
                                 time.sleep(ontime)
-                                if src == 'noise': GPIO.output(21,0); print 'mosfet off'
+                                if src == 'noise': GPIO.output(opts.mosfet,0); print 'mosfet off'
                                 t_stop=time.time()
                                 arr.append(nm.array([0,t_stop]))
                                 sys.stdout.flush()
@@ -158,8 +210,11 @@ def read_temperatures(opts, start_time=None):
                 if not os.path.isdir(outsubdir):
                         os.makedirs(outsubdir)
                 # One wire sensors take some time to read, so record
-                # both start and stop times for each logging cycle
-		f_pi_time = open(outsubdir + '/time_pi.raw','w')
+                # both start and stop times for each logging cycle.
+                # Do this for both system time and attempted RTC
+                # reads.
+		f_pi_time_sys = open(outsubdir + '/time_sys_pi.raw','w')
+		f_pi_time_rtc = open(outsubdir + '/time_rtc_pi.raw','w')
         	f_therms_time_start = open(outsubdir + '/time_start_therms.raw','w')
         	f_therms_time_stop = open(outsubdir + '/time_stop_therms.raw','w')
                 # File for Pi temperature
@@ -174,10 +229,12 @@ def read_temperatures(opts, start_time=None):
                 # Start reading sensors
                 while time.time()-tstart < opts.tfile*60:
 
-                        # Read Pi temperature
-                        time_start = time.time()
+                        # Read Pi time (system and RTC) and temperature
+                        time_start_sys = time.time()
+                        time_start_rtc = read_rtc_datetime()
                         #tstamp = datetime.datetime.utcnow().strftime('%Y%m%d_%H%M%S')
-			nm.array(time_start).tofile(f_pi_time)	
+			nm.array(time_start_sys).tofile(f_pi_time_sys)
+			nm.array(time_start_rtc).tofile(f_pi_time_rtc)
 			pi_temperature = subprocess.check_output('cat '+opts.ptemp,shell=True)
                         my_tmp = nm.int32(pi_temperature)
 			nm.array(my_tmp).tofile(f_pi_temp)
@@ -209,7 +266,8 @@ def read_temperatures(opts, start_time=None):
 			nm.array(time_stop).tofile(f_therms_time_stop)
 
 			f_pi_temp.flush()
-			f_pi_time.flush()
+			f_pi_time_sys.flush()
+			f_pi_time_rtc.flush()
 			f_therms_time_start.flush()
 			f_therms_time_stop.flush()
                         for f in f_therms_temp:
@@ -219,7 +277,8 @@ def read_temperatures(opts, start_time=None):
 
                 # Hmm, we weren't closing the files properly last year?
                 f_pi_temp.close()
-                f_pi_time.close()
+                f_pi_time_sys.close()
+                f_pi_time_rtc.close()
                 f_therms_time_start.close()
                 f_therms_time_stop.close()
                 for f in f_therms_temp:
@@ -231,9 +290,8 @@ if __name__ == '__main__':
     
     # Parse options
     parser = OptionParser()
-    parser.set_usage('switch_control.py [options]')
+    parser.set_usage('prizm_housekeeping.py [options]')
     parser.set_description(__doc__)
-    #parser.add_option('-l', '--logdir', dest='logdir',type='str', default='/data/housekeeping',help='Log directory [default: %default]')
     parser.add_option('-o', '--order', dest='seq',type='string', default=['antenna','res50','short','noise','res100','open'],
         	      help='Desired switch sequence of sources, options are "antenna", "res100", "res50", "short", "noise", "open" [default: %default]',
                       action='callback', callback=seq_callback)

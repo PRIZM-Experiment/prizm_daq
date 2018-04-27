@@ -63,7 +63,7 @@ def read_rtc_datetime(port="/dev/ttyUSB0", ctime=True):
             return dtstamp
 
 #=======================================================================
-def initialize_snap(snap_ip, opts, timeout=10, loglevel=50):
+def initialize_snap(snap_ip, opts, timeout=10, loglevel=40):
         """Connect to SNAP board, configure settings"""
 
         # Set up SNAP logger
@@ -78,17 +78,19 @@ def initialize_snap(snap_ip, opts, timeout=10, loglevel=50):
         logger.info('Connecting to server %s ... '%(snap_ip))
 	fpga=corr.katcp_wrapper.FpgaClient(snap_ip)
         #fpga = corr.katcp_wrapper.FpgaClient(snap_ip, opts.port, timeout=timeout, logger=logger)
-        time.sleep(1)
+        fpga._logger.setLevel(logging.ERROR)  # this cuts down on katcp spewage
+	time.sleep(1)  # important for live connection reporting
 
         if fpga.is_connected():
 	        logger.info('Connected!')
         else:
-	        logger.error('ERROR connecting to %s .' %(snap))
-	        exit_fail()
+	        logger.error('ERROR connecting to %s .' %(snap_ip))
+	        exit_fail(logger)
 	bof=opts.boffile
 	fpga.progdev(bof)
-	print 'Board clock is', fpga.est_brd_clk() #Board clock should be 1/4 of the sampling clock (board clock=125 MHz)                                                                                         adc.set_data_mode() 
+	print 'Board clock is', fpga.est_brd_clk() #Board clock should be 1/4 of the sampling clock (board clock=125 MHz)
 
+        # Get register list so we can identify which firmware we're using
         regs = fpga.listdev()
 
         # Use iadc only if we're running PRIZM firmware, not single SNAP
@@ -96,10 +98,10 @@ def initialize_snap(snap_ip, opts, timeout=10, loglevel=50):
 		adc=iadc.Iadc(fpga)
 		adc.set_dual_input()
 
-        logger.info('Configuring accumulation period...')
-        fpga.write_int('acc_len', opts.acc_len)
-        logger.info('Setting fft shift...')
-        # Different register names for different firmware versions
+        # Deal with FFT shift, accumulation length, and sync trigger
+        logger.info('Setting fft shift, accumulation length...')
+        # Different register names and values for different firmware versions
+        # ... PRIZM firmware
         if 'fft_shift' in regs:
                 # fpga.write_int('fft_shift', 0x00000000)  # verified fft_of = 1 all the time
                 # fpga.write_int('fft_shift', 0xF0F0F0F0)  # fft_of = 1 ~80% of the time
@@ -111,10 +113,44 @@ def initialize_snap(snap_ip, opts, timeout=10, loglevel=50):
                 # fpga.write_int('fft_shift', 0xE0E0E0E8)  # fft_of = 1 100% of the time
                 # fpga.write_int('fft_shift', 0xF0F0F0FF)  # fft_of = 0 90% of the time
                 # As of 4 May 2017, above value is dead to us.
-                fpga.write_int('fft_shift', 0xFFFFFFFF)  # fft_of = 0 90% of the time
+                # fpga.write_int('fft_shift', 0xFFFFFFFF)  # fft_of = 0 90% of the time
+                fpga.write_int('fft_shift', opts.fftshift)
+	        fpga.write_int('acc_len', opts.acc_len)
+        # ... single SNAP firmware
         elif 'pfb0_fft_shift' in regs and 'pfb1_fft_shift' in regs:
-                fpga.write_int('pfb0_fft_shift', 0xFFFF)
-                fpga.write_int('pfb1_fft_shift', 0xFFFF)
+                fpga.write_int('pfb0_fft_shift', opts.fftshift & 0xffff)
+                fpga.write_int('pfb1_fft_shift', opts.fftshift & 0xffff)
+
+		# Set accumulation length
+	        fpga.write_int('acc_len', opts.acc_len)
+                # Set sync registers.  These lines are copied from
+                # Jack's script, and I'm not exactly sure what they
+                # do.
+                print 'Triggering sync from a software trigger (NOT a GPS PPS). I think the time is:', time.time()
+                fpga.write_int('cnt_rst', 0)
+                fpga.write_int('sw_sync', 0)
+                fpga.write_int('sw_sync', 1)
+                trig_time = time.time()  # I'm not sure if this is needed, but going to leave it here
+                fpga.write_int('sw_sync', 0)
+                fpga.write_int('cnt_rst', 1)
+                fpga.write_int('cnt_rst', 0)
+                # We need to to ensure no FFT overflows in check
+                # below.  Might want to unhardwire this and make it
+                # something related to the accumulation length at some
+                # point in time....
+		time.sleep(15)
+
+                # Check for overflows
+                oflow = False
+                for i in range(5):
+                        oflow = oflow or bool(fpga.read_int('pfb0_fft_of'))
+                        oflow = oflow or bool(fpga.read_int('pfb1_fft_of'))
+                        time.sleep(1)
+                if oflow:
+                        print 'Overflows detected -- consider increasing FFT shift'
+                else:
+                        print 'No overflows detected'
+
         logger.info('Done configuring')
 
         time.sleep(2)
@@ -271,7 +307,8 @@ def read_data_singlesnap(fpga, ndat, npol=4):
 
         #assert(ndat==2048) #if we fail this, we need to update a whole bunch of sizes below...
 	mystr='>'+repr(ndat)
-	mystrq=mystr+'q'
+	# mystrq=mystr+'Q'
+	mystrq=mystr+'q'   #write signed data so the diff format will work
 
         alldat = {}
         for ipol in range(npol):
@@ -281,16 +318,21 @@ def read_data_singlesnap(fpga, ndat, npol=4):
                         else:
                                 regs = ['pol'+str(ipol)+str(jpol)+'r', 'pol'+str(ipol)+str(jpol)+'i']
                         for reg in regs:
-				# This line is from Jack's code but is giving us an unknown dtype error
-				# dat = nm.fromstring(fpga.read(reg,ndat*8),dtype='>i8')
-				dat = nm.fromstring(fpga.read(reg,ndat*8),dtype='i8')
-				dat = dat.newbyteorder()
-				dat = nm.asarray(dat, dtype='int64')
+				## This line is from Jack's code but is giving us an unknown dtype error
+				## dat = nm.fromstring(fpga.read(reg,ndat*8),dtype='>i8')
+                                ## This is a possible workaround
+				## dat = nm.fromstring(fpga.read(reg,ndat*8),dtype='i8')
+				## dat = dat.newbyteorder()
+				## dat = nm.asarray(dat, dtype='int64')
+
+                                # In principle, the struct.unpack
+                                # command should give the same answer
+                                # as nm.fromstring -- Jon tested this.
+                                
                                 # Forcing type casting to int64 because numpy tries to be
                                 # "smart" about casting to int32 if there are no explicit long
                                 # ints.
-                                # xxx DOUBLE CHECK THIS, MIGHT NOT NEED INT64
-                                # dat = nm.array(struct.unpack(mystrq,fpga.read(reg,ndat*8,0)),dtype='int64')
+                                dat = nm.array(struct.unpack(mystrq,fpga.read(reg,ndat*8,0)),dtype="int64")
                                 alldat[reg] = dat
 	return alldat
 
@@ -435,6 +477,8 @@ if __name__ == '__main__':
         #                   action='callback', callback=channel_callback)
 	parser.add_option('-a', '--acc_len', dest='acc_len', type='int',default=2*(2**28)/2048,
 		          help='Number of vectors to accumulate between dumps [default: %default]')
+        parser.add_option('-f', '--fftshift', dest='fftshift', type=int, default=0xFFFFFFFF,
+                            help='FFT shift schedule as an integer. Default:0xFFFFFFFF')
 	parser.add_option('-t', '--tfile', dest='tfile', type='int',default=15,
 		          help='Number of minutes of data in each file subdirectory [default: %default]')
         parser.add_option('-T','--tar',dest='tar',type='int',default=0,help='Tar up directories at end (non-zero for true)')

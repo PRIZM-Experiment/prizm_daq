@@ -12,12 +12,12 @@ if len(txt) > 0:
     exit(0)
 
 # Check if we're on one of the SNAP Pis first
-for freq in ['70', '100']:
-    path = '/home/pi/data_'+freq+'MHz'
+for freq in ['70MHz', '100MHz', 'singlesnap']:
+    path = '/home/pi/data_'+freq
     if os.path.exists(path):
         print 'Found data path', path
         print 'Running DAQ for', freq, 'MHz antenna'
-        cmd = 'supervisord -c /home/pi/daq_2018/supervisord/supervisord_'+freq+'MHz.conf'
+        cmd = 'supervisord -c /home/pi/daq_2018/supervisord/supervisord_'+freq+'.conf'
         os.system(cmd)
         print 'Started supervised DAQ process'
         exit(0)
