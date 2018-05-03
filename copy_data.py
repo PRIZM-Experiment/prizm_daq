@@ -50,10 +50,11 @@ if __name__ == '__main__':
         interactive = True
         print 'Ok, I will ask you to confirm the data copy from each RPi individually.'
     ip_front = '146.230.92.'
-    ip_ends = ['186','187','188']
+    ip_ends = ['186','187','188','189']
     data_dir = {'186':'data_100MHz',
                 '187':'data_70MHz',
-                '188':'switch_data'}
+                '188':'switch_data'
+		'189':'data_singlesnap'}
     for ip_end in ip_ends:
         do_copy = True
         ip = ip_front + ip_end
