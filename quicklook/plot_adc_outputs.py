@@ -41,7 +41,7 @@ y = struct.unpack('%db' % yraw['length'], yraw['data'])
 print 'x_rms:', np.std(x)
 print 'y_rms:', np.std(y)
 
-np.savez(open("adc_dump_100MHz_20170430_set5.npz","w"),Xpol=x, Ypol=y)
+np.savez(open("adc_dump_100MHz_20180423_set1.npz","w"),Xpol=x, Ypol=y)
 
 pylab.figure()
 pylab.title('Output of 2 ADC blocks on the external ADC card')

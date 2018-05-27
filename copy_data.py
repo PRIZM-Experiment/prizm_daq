@@ -10,7 +10,8 @@ import os
 if __name__ == '__main__':
 
     # We have more than one year now!
-    year = 2018
+    year = '2018'
+    #year = '2017'
     
     # Start by looking for existence of external drive
     try_laptop = False
@@ -53,7 +54,7 @@ if __name__ == '__main__':
     ip_ends = ['186','187','188','189']
     data_dir = {'186':'data_100MHz',
                 '187':'data_70MHz',
-                '188':'switch_data'
+                '188':'switch_data',
 		'189':'data_singlesnap'}
     for ip_end in ip_ends:
         do_copy = True

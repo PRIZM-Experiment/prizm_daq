@@ -2,6 +2,7 @@ import numpy
 import os
 import bz2
 import gzip
+import multiprocessing
 
     
 
@@ -154,12 +155,31 @@ def _read_file_as_string(fname):
     f.close()
     return mystr
 
-def read(fname):
+def read(fname,strict=False):
     if True:
-        mystr=_read_file_as_string(fname)
-        return _read_from_string(mystr)
-
-
+        if strict:
+            #only read the filename passed in
+            mystr=_read_file_as_string(fname)
+            return _read_from_string(mystr)
+        else:
+            #try some guesses about what other sane filenames might be based on the input filename
+            fnames=[fname]
+            if fname[-4:]=='.bz2':
+                fnames.append(fname[:-4])
+            if fname[-3:]=='.gz':
+                fnames.append(fname[:-3])
+            fnames.append(fname+'.bz2')
+            fnames.append(fname+'.gz')
+            
+            for fname in fnames:
+                try:
+                    mystr=_read_file_as_string(fname)
+                    if len(mystr)>0:
+                        return _read_from_string(mystr)
+                    else:
+                        return None
+                except:
+                    pass
     if fname[-4:]=='.bz2':
         return read_bz2(fname)
     f=open(fname)
@@ -184,6 +204,16 @@ def read(fname):
         mat=numpy.cumsum(mat,0)
 
     return mat
+
+def read_files(fnames,ncpu=0):
+    if ncpu==0:
+        ncpu=multiprocessing.cpu_count()
+    p=multiprocessing.Pool(ncpu)
+    data=p.map(read,fnames)
+
+    return data
+
+
 
 def int2dtype(myint):
     if (myint==8):
