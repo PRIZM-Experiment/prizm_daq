@@ -52,7 +52,7 @@ if __name__ == '__main__':
     data_dir_local = '/data/marion'+year
 
     # Specify output directory for plots
-    plot_dir = '/home/scihi/quicklook_plots'
+    plot_dir = os.getenv('HOME')+'/quicklook_plots'
 
     # If following is True, then execute eog system calls to show the
     # plots after they're created

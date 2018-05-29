@@ -32,7 +32,7 @@ if __name__ == '__main__':
     d = args[0]
 
     # Output directory for plots
-    plot_dir = '/home/scihi/quicklook_plots'
+    plot_dir = os.getenv('HOME')+'/quicklook_plots'
     # Some convenient directory and antenna names
     antnames = {'data_70MHz':'70MHz',
                 'data_100MHz':'100MHz',
