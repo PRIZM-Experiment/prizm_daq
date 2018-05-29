@@ -53,6 +53,10 @@ if __name__ == '__main__':
 
     # Specify output directory for plots
     plot_dir = '/home/scihi/quicklook_plots'
+
+    # If following is True, then execute eog system calls to show the
+    # plots after they're created
+    show_plot = True
     
     # Check which pi(s) are connected
     ip_front = '146.230.92.'
@@ -160,7 +164,6 @@ if __name__ == '__main__':
             pylab.suptitle(antname + ' : ' + str(tstamp))
             outfile = plot_dir+ '/' + antname + '_' + tstamp_outfile + '.png'
             pylab.savefig(outfile)
-            print 'Wrote', outfile
                 
         # Plotting routines for LWA antennas                
         elif antname == 'LWA':
@@ -212,9 +215,15 @@ if __name__ == '__main__':
             pylab.suptitle(antname + ' : ' + str(tstamp))
             outfile = plot_dir + '/' + antname + '_' + tstamp_outfile + '.png'
             pylab.savefig(outfile)
-            print 'Wrote', outfile
             
         else:
             print 'Unrecognized antenna name, giving up'
             exit(0)
-            
+
+        # Show off the plot to the human
+        print 'Wrote', outfile
+        if show_plot:
+            cmd = 'eog '+outfile+' &'
+            os.system(cmd)
+
+    # End loop over pis
