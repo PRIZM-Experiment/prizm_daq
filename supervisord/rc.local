@@ -1,5 +1,3 @@
-######## COPY THIS INTO /etc FOR AUTOMATED DAQ STARTUP MAGIC
-
 #!/bin/sh -e
 #
 # rc.local
@@ -18,6 +16,12 @@ _IP=$(hostname -I) || true
 if [ "$_IP" ]; then
   printf "My IP address is %s\n" "$_IP"
 fi
+
+# Sleep for a brief period in order to allow the GPS antenna to get a fix
+sleep 2m
+
+# Set the time
+python /home/pi/daq_2018/set_gpstime.py
 
 # Automagically start PRIZM DAQ
 /home/pi/daq_2018/supervisord/run_daq_supervised.py &

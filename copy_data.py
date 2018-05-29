@@ -12,23 +12,23 @@ if __name__ == '__main__':
     # We have more than one year now!
     year = '2018'
     #year = '2017'
+
+    # Arbitrary # of external drive numbers to try
+    ndrive = 4
     
     # Start by looking for existence of external drive
-    try_laptop = False
-    extdrive = '/media/scihi/SCIHI_DISK1'
-    if os.path.exists(extdrive):
-        print 'Detected external drive', extdrive
-        extpath = extdrive+'/marion'+year
-        ret = raw_input('Copy to external drive path '+extpath+'? (y/n) ')
-        if ret.lower() == 'y':
-            dest = extpath
-        else:
-            try_laptop = True
-    else:
-        print 'No external drive detected'
-        try_laptop = True
+    dest = None
+    for idrive in range(1, ndrive+1):
+        extdrive = '/media/scihi/SCIHI_DISK'+str(idrive)
+        if os.path.exists(extdrive):
+            print 'Detected external drive', extdrive
+            extpath = extdrive+'/marion'+year
+            ret = raw_input('Copy to external drive path '+extpath+'? (y/n) ')
+            if ret.lower() == 'y':
+                dest = extpath
     # See if the human wants to copy to the laptop instead
-    if try_laptop:
+    if dest is None:
+        print 'No external drive detected'
         extpath = '/data/marion'+year
         ret = raw_input('Copy to laptop path '+extpath+'? (y/n) ')
         if ret.lower() == 'y':

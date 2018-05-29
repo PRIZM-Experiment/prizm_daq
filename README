@@ -1,0 +1,123 @@
+Welcome to the PRIZM DAQ!
+=========================
+
+This quick guideline describes how to use the scripts that are
+relevant and current as of May 2018.
+
+
+0. Running the DAQ
+------------------
+
+The primary low-level DAQ scripts are:
+
+./prizm_daq_2018.py -- records data on the 70MHz, 100MHz, and LWA antennas
+
+./prizm_housekeeping.py -- for 70/100MHz only, controls switch state and reads out temperatures
+
+./set_gpstime.py -- query the GPS module for the current time, and update system time on the Pi
+
+This entire DAQ repository lives on all the RPis that are used in our
+system.  In principle, the DAQ should always automatically start when
+the SNAP boxes are powered on (more on this in the next section).
+However, if you ever find yourself in a situation where you need to
+manually (re)start the DAQ, here's how your do it:
+
+0) Connect the active GPS antenna to the SNAP box that you're working on
+
+1) Ssh into the Pi you care about (there are ssh shortcuts to pi-70,
+   pi-100, pi-ctrl, and pi-ss for the 70 MHz, 100 MHz, housekeeping,
+   and single SNAP Pis, respectively).
+
+2) Go into the DAQ directory
+      cd ~/daq_2018
+   and set the system time with
+      python set_gpstime.py
+   Afterward, verify that the system time is sensible by comparing
+   with your watch, phone, etc.  If it isn't sensible, then repeat the
+   above command.
+
+3) Confirm that there are no other DAQ or supervisord processes
+   currently running.  A safe thing to do is run the killing script:
+      cd ~/daq_2018/supervisord
+      ./kill_daq_supervised.py   [or sudo ./kill_daq_supervised.py]
+   You can also explicitly check for python processes with a command like
+      ps auwx | grep python
+
+4) Start the DAQ in supervised mode:
+      cd ~/daq_2018/supervisord
+      ./run_daq_supervised.py
+
+5) Verify that the DAQ is running properly by checking the following:
+   - Check that the python script is active with "ps awux | grep prizm"
+   - Check for errors in the supervisord files: "tail ~/supervisord_logs/supervisord.log"
+   - Check for errors in the DAQ stdout:
+     "tail ~/supervisord_logs/prizm_daq_2018*stdout.log" or
+     "tail ~/supervisord_logs/prizm_housekeeping_stdout.log"
+   - Check for errors in the DAQ stderr:
+     "tail ~/supervisord_logs/prizm_daq_2018*stderr.log" or
+     "tail ~/supervisord_logs/prizm_housekeeping_stderr.log"
+   - Verify data accumulation in the most recent directory:
+     cd ~/data_100MHz  [or cd ~/data_70MHz, cd ~/switch_data, cd ~/data_singlesnap]
+     ls -lt 1*/* | head -20
+     Do the above ls command a few times and check that the file sizes
+     are increasing and that the time stamps are updating.
+
+
+1. Supervised DAQ
+-----------------
+
+The DAQ is normally run in supervised mode, which means that the
+supervisor daemon (supervisord) keeps an eye on the python DAQ process
+and restarts it if it dies for any reason.  The supervised DAQ call is
+entered into /etc/rc.local on all the Pis, so it should start running
+automatically a few minutes after the Pi boots.  The rc.local file
+first sleeps for two minutes in order to allow the external GPS
+antenna to get a fix, and then it automatically runs the
+set_gpstime.py script, followed by run_daq_supervised.py.
+
+For more details about how the supervisord scripts and configuration
+files work, see the separate ./supervisord/README file.
+
+
+2. Quicklook scripts
+--------------------
+
+As of this writing, there are two primary quicklook scripts:
+
+./quicklook/plot_latest.py
+This script automatically checks for live connections to the SNAP Pis
+(pi-70, pi-100, pi-ss), looks for the most recent subdirectory, rsyncs
+those contents to /data/marion2018 on this laptop, and then generates
+some diagnostic plots that are saved to ~/quicklook_plots.
+
+./quicklook/plot_one_subdir.py
+This script produces the same diagnostic plots as the above, but it
+runs on a manually specified subdirectory.  This is most useful if you
+want to sanity check a chunk of data on e.g. the external drive with
+something like
+python quicklook/plot_one_subdir.py /media/scihi/SCIHI_DISK2/marion2018/data_100MHz/15262/1526233705
+(that chunk of data shows a "normal" looking spectrum, incidentally).
+
+Another useful convenience script:
+
+./quicklook/utc_ls.py
+This script converts UTC times into more human-friendly formats.  For
+example, try something like the following:
+python quicklook/utc_ls.py /data/marion2018/data_100MHz/*
+python quicklook/utc_ls.py /data/marion2018/data_100MHz/15246
+python quicklook/utc_ls.py /data/marion2018/data_100MHz/15246/*
+python quicklook/utc_ls.py /data/marion2018/data_100MHz/15246/1524691416
+
+
+3. Copying data
+---------------
+
+./copy_data.py
+This script first looks for the existence of external drives attached
+to the laptop (SCIHI_DISK1, SCIHI_DISK2, etc).  If external drives
+aren't attached, then you have the option of copying data to the
+laptop -- but YOU REALLY SHOULDN'T DO THIS UNLESS IT'S AN EMERGENCY
+(and in that case, you probably want to manually specify which files
+to copy anyway, rather than doing a wholesale rsync).  The script then
+checks for connections to all four Pis and automatically rsyncs data
+to the specified destination.

@@ -49,14 +49,12 @@ if __name__ == '__main__':
     if antname is None:
         print 'Failed to autodetect antenna name from path'
         antname = raw_input('Please manually enter an antenna name for the file: ')
-        print antname
     lastsubdir = fields[-1]
     # If there's a trailing slash, strip it
     for field in fields[-1::-1]:
         if field != '':
             lastsubdir = field
             break
-    print lastsubdir
 
     # Deal with time stamps
     tstamp = ctime2timestamp(int(lastsubdir))
