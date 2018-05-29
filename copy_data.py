@@ -18,17 +18,18 @@ if __name__ == '__main__':
     
     # Start by looking for existence of external drive
     dest = None
-    for idrive in range(1, ndrive+1):
-        extdrive = '/media/scihi/SCIHI_DISK'+str(idrive)
-        if os.path.exists(extdrive):
-            print 'Detected external drive', extdrive
-            extpath = extdrive+'/marion'+year
-            ret = raw_input('Copy to external drive path '+extpath+'? (y/n) ')
-            if ret.lower() == 'y':
-                dest = extpath
+    for username in ['scihi','prizm']:
+        for idrive in range(1, ndrive+1):
+            extdrive = '/media/'+username+'/SCIHI_DISK'+str(idrive)
+            if os.path.exists(extdrive):
+                print 'Detected external drive', extdrive
+                extpath = extdrive+'/marion'+year
+                ret = raw_input('Copy to external drive path '+extpath+'? (y/n) ')
+                if ret.lower() == 'y':
+                    dest = extpath
     # See if the human wants to copy to the laptop instead
     if dest is None:
-        print 'No external drive detected'
+        print 'No external drive detected or selected'
         extpath = '/data/marion'+year
         ret = raw_input('Copy to laptop path '+extpath+'? (y/n) ')
         if ret.lower() == 'y':
