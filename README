@@ -2,15 +2,69 @@ Welcome to the PRIZM DAQ!
 =========================
 
 This quick guideline describes how to use the scripts that are
-relevant and current as of May 2018.
+relevant and current as of May 2019.
+
+0. Quick start for normal winter operations
+-------------------------------------------
+
+For normal operations, do the following:
+
+0) Connect the active GPS antenna to the SNAP box you're working on.
+   Note that when you leave for the day, the active antenna should
+   always be attached to the big SNAP box.
+
+1) Attach the ethernet cable between the SNAP box and the laptop
+
+2) Power on the SNAP box and ssh into the Pi(s) *immediately*.  For
+   the larger SNAP box, I recommend having three terminals open and
+   ssh-ing into pi-70, pi-100, and pi-ctrl simultaneously.  For the
+   smaller single-SNAP box, you just need to ssh into pi-ss.
+
+3) The set_gpstime.py script will automatically run on each Pi two
+   minutes after boot (see notes about /etc/rc.local below).  You can
+   check this by running the "date" command on each Pi.  The reported
+   date/time will most likely be nonsensical when you first power on
+   the SNAP box, but it should automatically change to the correct
+   time after two minutes.  VERIFY THAT THE FINAL DATE/TIME IS CORRECT
+   BY COMPARING AGAINST A KNOWN SOURCE (phone etc).
+
+4) As soon as the date is set by set_gpstime.py, each Pi will
+   automatically start a supervised DAQ process.  Verify that the DAQ
+   is running properly by doing the following on each Pi:
+   - Check that the DAQ script is active with "ps awux | grep prizm".
+     You should find that either prizm_daq_2019.py or
+     prizm_housekeeping.py is running.  If you don't see either of
+     these processes, there's a problem.
+   - Check for errors in the supervisord files: "tail ~/supervisord_logs/supervisord.log"
+   - Check for errors in the DAQ stdout:
+     "tail ~/supervisord_logs/prizm_daq_2019*stdout.log" or
+     "tail ~/supervisord_logs/prizm_housekeeping_stdout.log"
+   - Check for errors in the DAQ stderr:
+     "tail ~/supervisord_logs/prizm_daq_2019*stderr.log" or
+     "tail ~/supervisord_logs/prizm_housekeeping_stderr.log"
+   - Verify data accumulation in the most recent directory:
+     cd ~/data_100MHz  [or cd ~/data_70MHz, cd ~/switch_data, cd ~/data_singlesnap]
+     ls -lt 1*/* | head -20
+     Do the above ls command a few times and check that the file sizes
+     are increasing and that the time stamps are updating.  A good
+     sanity check is that the most current subdirectory should contain
+     *.scio files that are increasing in size.  When a subdirectory is
+     completed, the *.scio files are compressed into *.scio.bz2 files.
+     In other words, if you see *.scio.bz2, then that subdirectory is
+     finished and the DAQ isn't actively writing to that location.
+
+5) Copy data (see section 4 below), don't forget to record battery
+   voltages, and do any other admin.  If you're feeling motivated,
+   check data quality with the quicklook scripts (see section 3
+   below).
 
 
-0. Running the DAQ
-------------------
+1. Running the DAQ manually
+---------------------------
 
 The primary low-level DAQ scripts are:
 
-./prizm_daq_2018.py -- records data on the 70MHz, 100MHz, and LWA antennas
+./prizm_daq_2019.py -- records data on the 70MHz, 100MHz, and LWA antennas
 
 ./prizm_housekeeping.py -- for 70/100MHz only, controls switch state and reads out temperatures
 
@@ -29,7 +83,7 @@ manually (re)start the DAQ, here's how your do it:
    and single SNAP Pis, respectively).
 
 2) Go into the DAQ directory
-      cd ~/daq_2018
+      cd ~/daq_2019
    and set the system time with
       python set_gpstime.py
    Afterward, verify that the system time is sensible by comparing
@@ -38,32 +92,37 @@ manually (re)start the DAQ, here's how your do it:
 
 3) Confirm that there are no other DAQ or supervisord processes
    currently running.  A safe thing to do is run the killing script:
-      cd ~/daq_2018/supervisord
+      cd ~/daq_2019/supervisord
       ./kill_daq_supervised.py   [or sudo ./kill_daq_supervised.py]
    You can also explicitly check for python processes with a command like
       ps auwx | grep python
 
 4) Start the DAQ in supervised mode:
-      cd ~/daq_2018/supervisord
+      cd ~/daq_2019/supervisord
       ./run_daq_supervised.py
 
 5) Verify that the DAQ is running properly by checking the following:
    - Check that the python script is active with "ps awux | grep prizm"
    - Check for errors in the supervisord files: "tail ~/supervisord_logs/supervisord.log"
    - Check for errors in the DAQ stdout:
-     "tail ~/supervisord_logs/prizm_daq_2018*stdout.log" or
+     "tail ~/supervisord_logs/prizm_daq_2019*stdout.log" or
      "tail ~/supervisord_logs/prizm_housekeeping_stdout.log"
    - Check for errors in the DAQ stderr:
-     "tail ~/supervisord_logs/prizm_daq_2018*stderr.log" or
+     "tail ~/supervisord_logs/prizm_daq_2019*stderr.log" or
      "tail ~/supervisord_logs/prizm_housekeeping_stderr.log"
    - Verify data accumulation in the most recent directory:
      cd ~/data_100MHz  [or cd ~/data_70MHz, cd ~/switch_data, cd ~/data_singlesnap]
      ls -lt 1*/* | head -20
      Do the above ls command a few times and check that the file sizes
-     are increasing and that the time stamps are updating.
+     are increasing and that the time stamps are updating.  A good
+     sanity check is that the most current subdirectory should contain
+     *.scio files that are increasing in size.  When a subdirectory is
+     completed, the *.scio files are compressed into *.scio.bz2 files.
+     In other words, if you see *.scio.bz2, then that subdirectory is
+     finished and the DAQ isn't actively writing to that location.
 
 
-1. Supervised DAQ
+2. Supervised DAQ
 -----------------
 
 The DAQ is normally run in supervised mode, which means that the
@@ -79,7 +138,7 @@ For more details about how the supervisord scripts and configuration
 files work, see the separate ./supervisord/README file.
 
 
-2. Quicklook scripts
+3. Quicklook scripts
 --------------------
 
 As of this writing, there are two primary quicklook scripts:
@@ -87,7 +146,7 @@ As of this writing, there are two primary quicklook scripts:
 ./quicklook/plot_latest.py
 This script automatically checks for live connections to the SNAP Pis
 (pi-70, pi-100, pi-ss), looks for the most recent subdirectory, rsyncs
-those contents to /data/marion2018 on this laptop, and then generates
+those contents to /data/marion2019 on this laptop, and then generates
 some diagnostic plots that are saved to ~/quicklook_plots.
 
 ./quicklook/plot_one_subdir.py
@@ -95,21 +154,20 @@ This script produces the same diagnostic plots as the above, but it
 runs on a manually specified subdirectory.  This is most useful if you
 want to sanity check a chunk of data on e.g. the external drive with
 something like
-python quicklook/plot_one_subdir.py /media/scihi/SCIHI_DISK2/marion2018/data_100MHz/15262/1526233705
-(that chunk of data shows a "normal" looking spectrum, incidentally).
+python quicklook/plot_one_subdir.py /media/scihi/SCIHI_DISK2/marion2019/data_100MHz/15262/1526233705
 
 Another useful convenience script:
 
 ./quicklook/utc_ls.py
 This script converts UTC times into more human-friendly formats.  For
 example, try something like the following:
-python quicklook/utc_ls.py /data/marion2018/data_100MHz/*
-python quicklook/utc_ls.py /data/marion2018/data_100MHz/15246
-python quicklook/utc_ls.py /data/marion2018/data_100MHz/15246/*
-python quicklook/utc_ls.py /data/marion2018/data_100MHz/15246/1524691416
+python quicklook/utc_ls.py /data/marion2019/data_100MHz/*
+python quicklook/utc_ls.py /data/marion2019/data_100MHz/15246
+python quicklook/utc_ls.py /data/marion2019/data_100MHz/15246/*
+python quicklook/utc_ls.py /data/marion2019/data_100MHz/15246/1524691416
 
 
-3. Copying data
+4. Copying data
 ---------------
 
 ./copy_data.py

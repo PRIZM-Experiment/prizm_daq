@@ -17,7 +17,7 @@ for freq in ['70MHz', '100MHz', 'singlesnap']:
     if os.path.exists(path):
         print 'Found data path', path
         print 'Running DAQ for', freq, 'MHz antenna'
-        cmd = 'supervisord -c /home/pi/daq_2018/supervisord/supervisord_'+freq+'.conf'
+        cmd = 'supervisord -c /home/pi/daq_2019/supervisord/supervisord_'+freq+'.conf'
         os.system(cmd)
         print 'Started supervised DAQ process'
         exit(0)
@@ -27,7 +27,7 @@ path = '/home/pi/switch_data'
 if os.path.exists(path):
     print 'Found data path', path
     print 'Running switch control and housekeeping script'
-    cmd = 'supervisord -c /home/pi/daq_2018/supervisord/supervisord_housekeeping.conf'
+    cmd = 'supervisord -c /home/pi/daq_2019/supervisord/supervisord_housekeeping.conf'
     os.system(cmd)
     print 'Started supervised DAQ process'
     exit(0)

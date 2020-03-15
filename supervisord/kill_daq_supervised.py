@@ -36,7 +36,7 @@ if __name__ == '__main__':
             killpid(pid)
     # If there are any DAQ copies floating around, kill those too
     print 'Searching for extraneous DAQ processes'
-    for daq in ['prizm_daq_2018.py', 'prizm_housekeeping.py']:
+    for daq in ['prizm_daq_2019.py', 'prizm_housekeeping.py']:
         txt = subprocess.Popen(['pgrep','-f',daq], stdout=subprocess.PIPE).communicate()[0]
         lines = txt.split('\n')
         for line in lines:

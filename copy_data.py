@@ -10,7 +10,8 @@ import os
 if __name__ == '__main__':
 
     # We have more than one year now!
-    year = '2018'
+    year = '2019'
+    # year = '2018'
     #year = '2017'
 
     # Arbitrary # of external drive numbers to try
@@ -20,7 +21,7 @@ if __name__ == '__main__':
     dest = None
     for username in ['scihi','prizm']:
         for idrive in range(1, ndrive+1):
-            extdrive = '/media/'+username+'/SCIHI_DISK'+str(idrive)
+            extdrive = '/media/'+username+'/PRIZM_DISK'+str(idrive)
             if os.path.exists(extdrive):
                 print 'Detected external drive', extdrive
                 extpath = extdrive+'/marion'+year
@@ -52,11 +53,15 @@ if __name__ == '__main__':
         interactive = True
         print 'Ok, I will ask you to confirm the data copy from each RPi individually.'
     ip_front = '146.230.92.'
-    ip_ends = ['186','187','188','189']
+    ip_ends = ['186','187','188']
     data_dir = {'186':'data_100MHz',
                 '187':'data_70MHz',
-                '188':'switch_data',
-		'189':'data_singlesnap'}
+                '188':'switch_data'}
+    # ip_ends = ['186','187','188','189']
+    # data_dir = {'186':'data_100MHz',
+    #             '187':'data_70MHz',
+    #             '188':'switch_data',
+    # 	        '189':'data_singlesnap'}
     for ip_end in ip_ends:
         do_copy = True
         ip = ip_front + ip_end
