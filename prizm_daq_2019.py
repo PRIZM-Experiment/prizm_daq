@@ -1,6 +1,19 @@
 #!/usr/bin/python
-import time, datetime, struct, sys, logging, os, subprocess, serial
-import corr, scio, iadc
+import time
+import datetime
+import struct
+import sys
+import logging
+import os
+import subprocess
+import serial
+#import corr
+import smbus
+import ds3231
+import thread
+import yaml
+import scio
+import iadc
 import numpy as nm
 from argparse import ArgumentParser
 from pynmea2 import nmea
@@ -109,7 +122,7 @@ def initialize_snap(snap_ip, opts, timeout=10, loglevel=40):
         return fpga
 
 #=======================================================================
-def get_fpga_temp(fpga):
+def get_fpga_temp():
         # returns fpga core temperature
         TEMP_OFFSET = 0x0
         reg = 'xadc'
@@ -289,11 +302,6 @@ def run_switch(opts, start_time=None):
         while True:
                 tstart = time.time()
                 starttime = datetime.datetime.utcnow().strftime('%Y%m%d_%H%M%S')
-                if (tstart>1e5):
-                        tfrag=repr(tstart)[:5]
-                else:
-                        print 'warning in run_switch - tstart seems to be near zero.  Did you set your clock?'
-                        tfrag='00000'
                 outsubdir = opts.outdir + '/' + tfrag + '/' + str(nm.int64(tstart))
                 if not os.path.isdir(outsubdir):
                         os.makedirs(outsubdir)
@@ -313,7 +321,7 @@ def run_switch(opts, start_time=None):
                                 if src == 'short': arr=short
                                 if src == 'noise' : arr=noise
 				if src == 'open' : arr=open
-                                
+
                                 pin = srcs[src][0]
                                 ontime = float(srcs[src][1]) * 60.   # Convert to seconds
                                 starttime = datetime.datetime.utcnow().strftime('%Y%m%d_%H%M%S')
@@ -338,7 +346,7 @@ def run_switch(opts, start_time=None):
                                 # will need to correct with RTC time
                                 # in post-processing.
                                 t_start=time.time()
-                                arr.append(nm.array([1,t_start])) 
+                                arr.append(nm.array([1,t_start]))
                                 time.sleep(ontime)
                                 if src == 'noise': GPIO.output(opts.mosfet,0); print 'mosfet off'
                                 t_stop=time.time()
@@ -347,8 +355,7 @@ def run_switch(opts, start_time=None):
         return
 
 #=======================================================================
-def read_temperatures(opts, start_time=None):
-
+def read_temperatures(params, start_time=None):
         """Read temperatures and log to file at specified time intervals
         - opts : options from parser, including time interval
         - start_time : optional starting time stamp for the log file
@@ -357,121 +364,106 @@ def read_temperatures(opts, start_time=None):
         # Open a log file and write some header information
         if start_time is None:
                 start_time = datetime.datetime.utcnow().strftime('%Y%m%d_%H%M%S')
-
         # Get temperature sensor info from config file
-        f = open(opts.tconf, 'r')
-        txt = f.readlines()
         tempsensors = []
-        for line in txt:
-                # Check if leading character is a comment tag
-                s = re.search(r'^\s*\#', line)
-                if s is not None:
-                        continue
-                # Otherwise assume that there are three fields: sensor
-                # ID, tag, long descriptor; skip everything else
-                fields = line.split(',')
-                if len(fields) != 3:
-                        continue
-                id = fields[0].strip()
-                tag = fields[1].strip()
-                desc = fields[2].strip()  # unused for now, useful for print debugging
-                tempsensors.append((id, tag))  # use list instead of dict to preserve order
-        f.close()
-                
+        for key in params["temperature-sensors"].keys():
+                if key[:5] == "temp_":
+                        # use list instead of dict to preserve order
+                        tempsensors.append((params["temperature-sensors"][key]["id"], params["temperature-sensors"][key]["tag"]))
         # Do an infinite loop over temperature reads
         while True:
-                tstart = time.time()
+	        tstart = time.time()
+                tfrag=repr(tstart)[:5]
                 #starttime = datetime.datetime.utcnow()#.strftime('%Y%m%d_%H%M%S')
-                if (tstart>1e5):
-                        tfrag=repr(tstart)[:5]
-                else:
-                        print 'warning in run_switch - tstart seems to be near zero.\
-  Did you set your clock?'
-                        tfrag='00000'
-                outsubdir = opts.outdir+'/'+tfrag +'/' + str(nm.int64(tstart))
+                outsubdir = params["data_directory"]+'/temperature-sensors/'+tfrag +'/' + str(nm.int64(tstart))
                 if not os.path.isdir(outsubdir):
-                        os.makedirs(outsubdir)
+                	os.makedirs(outsubdir)
                 # One wire sensors take some time to read, so record
                 # both start and stop times for each logging cycle.
                 # Do this for both system time and attempted RTC
                 # reads.
-		f_pi_time_sys = open(outsubdir + '/time_sys_pi.raw','w')
-		f_pi_time_rtc = open(outsubdir + '/time_rtc_pi.raw','w')
-        	f_therms_time_start = open(outsubdir + '/time_start_therms.raw','w')
-        	f_therms_time_stop = open(outsubdir + '/time_stop_therms.raw','w')
+	 	f_therms_time_gps_start = open(outsubdir + '/time_start_gps_therms.raw','w')
+                f_therms_time_gps_stop = open(outsubdir + '/time_stop_gps_therms.raw','w')
+	 	f_therms_time_rtc_start = open(outsubdir + '/time_start_rtc_therms.raw','w')
+                f_therms_time_rtc_stop = open(outsubdir + '/time_stop_rtc_therms.raw','w')
+         	f_therms_time_sys_start = open(outsubdir + '/time_start_sys_therms.raw','w')
+         	f_therms_time_sys_stop = open(outsubdir + '/time_stop_sys_therms.raw','w')
                 # File for Pi temperature
-                f_pi_temp =  open(outsubdir+'/temp_pi.raw','w')
+                f_pi_temp = open(outsubdir+'/temp_pi.raw','w')
+                # File for FPGA temperature
+                f_fpga_temp = open(outsubdir+'/temp_fpga.raw','w')
                 # Files for one-wire sensors: specified in config file
                 f_therms_temp = []
                 for tempsensor in tempsensors:
                         tag = tempsensor[1]
                         f = open(outsubdir + '/temp_'+tag+'.raw','w')
                         f_therms_temp.append(f)
-
                 # Start reading sensors
-                while time.time()-tstart < opts.tfile*60:
-
-                        # Read Pi time (system and RTC) and temperature
-                        time_start_sys = time.time()
-                        time_start_rtc = read_rtc_datetime()
-                        #tstamp = datetime.datetime.utcnow().strftime('%Y%m%d_%H%M%S')
-			nm.array(time_start_sys).tofile(f_pi_time_sys)
-			nm.array(time_start_rtc).tofile(f_pi_time_rtc)
-			pi_temperature = subprocess.check_output('cat '+opts.ptemp,shell=True)
-                        my_tmp = nm.int32(pi_temperature)
-			nm.array(my_tmp).tofile(f_pi_temp)
-
-                        # Read one-wire sensors
-			tstamp = datetime.datetime.utcnow().strftime('%Y%m%d_%H%M%S')
-			print 'Starting one-wire read : ', tstamp
-			time_start = time.time()
-			nm.array(time_start).tofile(f_therms_time_start)
+                while time.time()-tstart < params["scio-files"]["file_time"]:
+			# Read Pi time (system and RTC) and temperature
+			time_start_sys = time.time()
+			time_start_gps = read_gps_datetime()
+                        time_start_rtc = rtc.get_datetime().timestamp()
+                        nm.array(time_start_sys).tofile(f_therms_time_sys_start)
+                        nm.array(time_start_gps).tofile(f_therms_time_gps_start)
+	 		nm.array(time_start_rtc).tofile(f_therms_time_rtc_start)
+                        pi_temperature = subprocess.check_output(["cat", "/sys/class/thermal/thermal_zone0/temp"])
+                        pi_temp = nm.int32(pi_temperature)/1000
+	 		nm.array(pi_temp).tofile(f_pi_temp)
+                        fpga_temp = get_fpga_temp()
+                        nm.array(fpga_temp).tofile(f_fpga_tempp)
+			# Read one-wire sensors
+	 		logging.debug('Starting one-wire read')
                         for i,tempsensor in enumerate(tempsensors):
-                                id = tempsensor[0]
+				id = tempsensor[0]
                                 tag = tempsensor[1]
                                 # Replace device wildcard with actual sensor ID and do a read
-				try:
-                                	dfile = open(opts.tdev.replace('*', id))
-                                	txt = dfile.read()
-                                	dfile.close()
-				except:
+	 			try:
+                        		dfile = open(opts.tdev.replace('*', id))
+                        		txt = dfile.read()
+                        		dfile.close()
+	 			except:
 					txt = None
                                 # Search for e.g. "t=25345" string for temperature reading
 				temperature = nm.NAN
 				if txt is not None:
-                                	s = re.search(r't=(\d+)', txt)
-                                	if s is not None:
-                                        	temperature = float(s.group(1)) / 1000
-                                        	nm.array(temperature).tofile(f_therms_temp[i])
-                                print tag, '\t', temperature
-			time_stop = time.time()
-			nm.array(time_stop).tofile(f_therms_time_stop)
-
+                        	       	s = re.search(r't=(\d+)', txt)
+                        		if s is not None:
+                        	               	temperature = float(s.group(1)) / 1000
+                        	              	nm.array(temperature).tofile(f_therms_temp[i])
+                                logger.debug("%s = %f"%(tag, temperature))
+		        time_stop_sys = time.time()
+			time_stop_gps = read_gps_datetime()
+                        time_stop_rtc = rtc.get_datetime().timestamp()
+                        nm.array(time_stop_sys).tofile(f_therms_time_sys_stop)
+                        nm.array(time_stop_gps).tofile(f_therms_time_gps_stop)
+	 		nm.array(time_stop_rtc).tofile(f_therms_time_rtc_stop)
 			f_pi_temp.flush()
-			f_pi_time_sys.flush()
-			f_pi_time_rtc.flush()
-			f_therms_time_start.flush()
-			f_therms_time_stop.flush()
+			f_fpga_temp.flush()
+                        f_therms_time_sys_stop.flush()
+                        f_therms_time_gps_stop.flush()
+	 		f_therms_time_rtc_stop.flush()
                         for f in f_therms_temp:
-                                f.flush()
-			sys.stdout.flush()
-                        time.sleep(opts.temptime*60)
-
+                        	f.flush()
+			time.sleep(params["temperature-sensors"]["read_interval"])
                 # Hmm, we weren't closing the files properly last year?
                 f_pi_temp.close()
-                f_pi_time_sys.close()
-                f_pi_time_rtc.close()
-                f_therms_time_start.close()
-                f_therms_time_stop.close()
+		f_fpga_temp.close()
+                f_therms_time_sys_start.close()
+                f_therms_time_gps_start.close()
+	 	f_therms_time_rtc_start.close()
+                f_therms_time_sys_stop.close()
+                f_therms_time_gps_stop.close()
+	 	f_therms_time_rtc_stop.close()
                 for f in f_therms_temp:
                         f.close()
-        return
+        return None
 #=======================================================================
 if __name__ == '__main__':
         i2c_bus=smbus.SMBus(1)
         rtc=ds3231.DS3231(i2c_bus)
         rtc.set_system_clock_from_rtc()
-        
+
         # Parse options
 	parser = ArgumentParser()
         parser.add_argument("configfile", type=str, help="yaml file with configuration options for PRIZM's DAQ")
@@ -480,7 +472,7 @@ if __name__ == '__main__':
         params=None
         with open(args.configfile, "r") as cf:
                 params=yaml.load(cf.read(), yaml.FullLoader)
-        
+
 	# Create log file
         log_dir=params["data_directory"]+"/logs"
         if not os.path.exists(log_dir):
@@ -504,12 +496,13 @@ if __name__ == '__main__':
         logging.info('Writing data to top level location %s' %(params["data_directory"]))
 	try:
                 # Start up switch operations and temperature logging, use same starting time stamp for both
-                # start_time = datetime.datetime.utcnow().strftime('%Y%m%d_%H%M%S')
+                start_time = datetime.datetime.utcnow().strftime('%Y%m%d_%H%M%S')
                 # p1 = thread.start_new_thread( run_switch, (opts, start_time) )
                 # Tiny sleep statement to avoid directory creation collision
                 # time.sleep(2)
-                # p2 = thread.start_new_thread( read_temperatures, (opts, start_time))
+                p2 = thread.start_new_thread(read_temperatures, (params, start_time))
 	        # acquire_data_prizm(fpga, opts, ndat=opts.nchan)
-                pass
+                time.sleep(10000)
 	finally:
 		logging.info('Terminating DAQ script at %s'%(str(datetime.datetime.now().strftime("%Y-%m-%d_%H-%M-%S"))))
+
