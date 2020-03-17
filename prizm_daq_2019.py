@@ -2,8 +2,8 @@
 import time, datetime, struct, sys, logging, os, subprocess, serial
 import corr, scio, iadc
 import numpy as nm
-from optparse import OptionParser
-from pynmea import nmea
+from argparse import ArgumentParser
+from pynmea2 import nmea
 
 #=======================================================================
 def exit_fail(lh):
@@ -466,89 +466,50 @@ def read_temperatures(opts, start_time=None):
                 for f in f_therms_temp:
                         f.close()
         return
-
+#=======================================================================
 if __name__ == '__main__':
-
+        i2c_bus=smbus.SMBus(1)
+        rtc=ds3231.DS3231(i2c_bus)
+        rtc.set_system_clock_from_rtc()
+        
         # Parse options
-	parser = OptionParser()
-	parser.set_usage('snap_daq.py <SNAP_HOSTNAME_or_IP> [options]')
-	parser.set_description(__doc__)
-	parser.add_option('-o', '--outdir', dest='outdir',type='str', default='/data/raw',
-		          help='Output directory [default: %default]')
-	parser.add_option('-d', '--diff', dest='diff',type='int', default=0,
-                          help='Write diffs - non-zero for yes [default 0]')
-	parser .add_option('-z','--compress',dest='compress',type='str',default='',help='Command to use to compress data files, if desired')
-	parser.add_option('-l', '--logdir', dest='logdir',type='str', default='/data/log',
-		          help='Log directory [default: %default]')
-	parser.add_option('-p', '--port', dest='port',type='int', default=7147,
-		          help='Port number [default: %default]')
-	# parser.add_option('-c', '--channel', dest='channel',type='string', default=[0,1],
-	# 	          help='ADC channels as comma separated list [default: %default]',
-        #                   action='callback', callback=channel_callback)
-	parser.add_option('-a', '--acc_len', dest='acc_len', type='int',default=2*(2**28)/2048,
-		          help='Number of vectors to accumulate between dumps [default: %default]')
-        parser.add_option('-f', '--fftshift', dest='fftshift', type=int, default=0xFFFFFFFF,
-                            help='FFT shift schedule as an integer. Default:0xFFFFFFFF')
-	parser.add_option('-t', '--tfile', dest='tfile', type='int',default=15,
-		          help='Number of minutes of data in each file subdirectory [default: %default]')
-        parser.add_option('-T','--tar',dest='tar',type='int',default=0,help='Tar up directories at end (non-zero for true)')
-	parser.add_option('-n', '--nchan', dest='nchan', type='int',default=2048,
-		          help='Spectrum length [default: %default]')
-	parser.add_option('-w', '--wait', dest='wait', type='int',default=0,
-		          help='Number of seconds to wait between taking spectra [default: %default]')
-	parser.add_option('-i', '--ip', dest='ip', type='str',default=None,
-			  help='IP address of the raspberry pi')
-	parser.add_option('-b', '--bof', dest='boffile',type='str', default='',
-			  help='Specify the bof file to load')
-	parser.add_option('-C','--comment',dest='comment',type='str',default='',help='Comment for log')
-	opts, args = parser.parse_args(sys.argv[1:])
+	parser = ArgumentParser()
+        parser.add_argument("configfile", type=str, help="yaml file with configuration options for PRIZM's DAQ")
+	args = parser.parse_args()
 
-	if opts.ip is None:
-		print 'Please specify a SNAP board. Run with the -h flag to see all options.\nExiting.'
-		exit()
+        params=None
+        with open(args.configfile, "r") as cf:
+                params=yaml.load(cf.read(), yaml.FullLoader)
+        
+	# Create log file
+        log_dir=params["data_directory"]+"/logs"
+        if not os.path.exists(log_dir):
+                os.makedirs(log_dir)
 
-        #--------------------------------------------------------------
-
-        # Create log file
-        if not os.path.exists(opts.logdir):
-                os.makedirs(opts.logdir)
-                print 'Created directory',opts.logdir
         logging.basicConfig(level=logging.DEBUG,
                             format='%(asctime)s %(name)-12s %(message)s',
                             datefmt='%m-%d %H:%M',
-                            filename=opts.logdir+'/'+str(time.time())+'.log',
+                            filename=log_dir+'/prizm_daq_'+str(datetime.datetime.now().strftime("%Y-%m-%d_%H-%M-%S"))+'.log',
                             filemode='w')
-        console = logging.StreamHandler()
-        console.setLevel(logging.INFO)
-        formatter = logging.Formatter('%(name)-12s: %(message)s')
-        console.setFormatter(formatter)
-        logging.getLogger('').addHandler(console)
 
         # Save run-time options to file
         logging.info('======= Run-time options =======')
-	logging.info('Boffile: %s' % (opts.boffile))
-        logging.info('Accumulate length: %d' %(opts.acc_len))
-        logging.info('# channels: %d' %(opts.nchan))
-        logging.info('Minutes per file: %d' %(opts.tfile))
-        logging.info('Seconds between spectra: %d' %(opts.wait))
-	logging.info('Comment: %s' % (opts.comment))
-        logging.info('================================')
+	logging.info('================================')
 
         # Connect to SNAP board and initialize
-        fpga = None
-        fpga = initialize_snap(opts.ip, opts)
-	time.sleep(5)
+        # fpga = initialize_snap(opts.ip, opts)
+	# time.sleep(5)
 
-        # Try to figure out what kind of DAQ we should run
         # Acquire data
-        logging.info('Writing data to top level location %s' %(opts.outdir))
+        logging.info('Writing data to top level location %s' %(params["data_directory"]))
 	try:
                 # Start up switch operations and temperature logging, use same starting time stamp for both
-                start_time = datetime.datetime.utcnow().strftime('%Y%m%d_%H%M%S')
-                p1 = thread.start_new_thread( run_switch, (opts, start_time) )
+                # start_time = datetime.datetime.utcnow().strftime('%Y%m%d_%H%M%S')
+                # p1 = thread.start_new_thread( run_switch, (opts, start_time) )
                 # Tiny sleep statement to avoid directory creation collision
-                time.sleep(2)
-                p2 = thread.start_new_thread( read_temperatures, (opts, start_time))
-	        acquire_data_prizm(fpga, opts, ndat=opts.nchan)
+                # time.sleep(2)
+                # p2 = thread.start_new_thread( read_temperatures, (opts, start_time))
+	        # acquire_data_prizm(fpga, opts, ndat=opts.nchan)
+                pass
 	finally:
-		logging.info('Terminating DAQ script at %s' % str(time.time()))
+		logging.info('Terminating DAQ script at %s'%(str(datetime.datetime.now().strftime("%Y-%m-%d_%H-%M-%S"))))
