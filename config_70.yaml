@@ -1,0 +1,119 @@
+snap-board:
+    ip: 127.0.0.1
+    port: 7147
+
+firmware: ../firmware/extadc_snap_spec_8k_2019-10-08_1227.fpg
+
+fft_shift: 0xffffffff
+
+tvg:
+    enable: False
+    data: test_data.npy
+
+accumulation_length: 393216
+
+log_level: 10
+
+data_directory: /home/pi/data_70MHz
+
+scio-files:
+    diff: False
+    compress: bzip2
+    file_time: 100
+
+switch-control:
+    sequence:
+         - antenna 
+         - noise 
+         - res-50 
+         - res-100 
+         - short 
+         - vna
+
+    gpios:
+        switch_antenna:
+            1: A3;out
+            2: B3;out
+            reset: None
+        switch_calibrator:
+            1: A7;out 
+            2: B0;out
+            3: A6;out
+            4: B1;out
+            5: A5;out
+            6: B2;out
+            reset: A4;out
+        noise-source: B4;out
+
+    antenna:
+         switch: calibrator
+         position: 1
+         on: 15
+ 
+    noise:
+         switch: calibrator
+         position: 2
+         on: 15
+
+    res-50:
+         switch: calibrator
+         position: 3
+         on: 15
+
+    res-100:
+         switch: calibrator
+         position: 4
+         on: 15
+
+    short:
+         switch: calibrator
+         position: 5
+         on: 15
+
+    vna:
+         switch: calibrator
+         position: 6
+         on: 15
+
+temperature-sensors:
+    read_interval: 10
+    temp_1:
+        id: 28-00000ade32e6
+        tag: 70_snapbox
+        description: 70 MHz SNAP box ambient danglemometer
+    temp_2:
+        id: 28-000007a17188
+        tag: 70_ambient
+        description: 70 MHz ambient sensor (mounted on side NS)
+    temp_3:
+        id: 28-000007a1d71c
+        tag: 70EW_top_lna
+        description: 70 MHz side EW top LNA
+    temp_4:
+        id: 28-000007a0406d
+        tag: 70EW_bot_lna
+        description: 70 MHz side EW bottom LNA
+    temp_5:
+        id: 28-000007a10a52
+        tag: 70EW_switch
+        description: 70 MHz side EW switch
+    temp_6:
+        id: 28-0000079fc869
+        tag: 70EW_noise
+        description: 70 MHz side EW noise diode
+    temp_7:
+        id: 28-000007a05bc0
+        tag: 70NS_top_lna
+        description: 70 MHz side NS top LNA
+    temp_8:
+        id: 28-000007a16f70
+        tag: 70NS_bot_lna
+        description: 70 MHz side NS bottom LNA
+    temp_9:
+        id: 28-000007a20adc
+        tag: 70NS_switch
+        description: 70 MHz side NS switch
+    temp_10:
+        id: 28-000007a0bad0
+        tag: 70NS_noise
+        description: 70 MHz side NS noise diode
