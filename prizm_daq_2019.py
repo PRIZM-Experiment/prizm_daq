@@ -311,14 +311,11 @@ def run_switch(params, start_time=None):
                                                         compress=params["scio-files"]["compress"])
 
                 seq_list = params["switch-control"]["sequence"]
-                print(seq_list)
                 while time.time()-tstart < params["scio-files"]["file_time"]:
                         seq = seq_list.pop(0)
-                        print(seq)
                         which_switch = params["switch-control"][seq]["switch"]
                         which_pos = str(params["switch-control"][seq]["position"])
                         ontime = params["switch-control"][seq]["ontime"]
-                        print(which_switch, which_pos)
                         port = params["switch-control"]["switches"][which_switch]["gpios"][which_pos][0]
                         pin = params["switch-control"]["switches"][which_switch]["gpios"][which_pos][1:]
                         starttime = datetime.datetime.utcnow().strftime('%Y%m%d_%H%M%S')
@@ -343,7 +340,6 @@ def run_switch(params, start_time=None):
                         # source.  These are latching
                         # switches, so just need to pulse the
                         # pin...
-                        print(port, pin)
                         gpios.set_output_latch(port, pin, True)
                         logging.debug('%s Source On'%(seq))
                         time.sleep(0.20)
@@ -367,7 +363,6 @@ def run_switch(params, start_time=None):
                         t_stop=time.time()
                         pos_scio_files[seq].append(nm.array([0,t_stop]))
                         seq_list.append(seq)
-                        print(seq_list)
         return None
 
 #=======================================================================
