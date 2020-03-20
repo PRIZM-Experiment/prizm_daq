@@ -23,57 +23,67 @@ scio-files:
 
 switch-control:
     sequence:
-         - antenna 
-         - noise 
-         - res-50 
-         - res-100 
-         - short 
-         - vna
+        - antenna 
+        - noise 
+        - res-50 
+        - res-100 
+        - short 
+        #- vna
 
-    gpios:
-        switch_antenna:
-            1: A3;out
-            2: B3;out
-            reset: None
-        switch_calibrator:
-            1: A7;out 
-            2: B0;out
-            3: A6;out
-            4: B1;out
-            5: A5;out
-            6: B2;out
-            reset: A4;out
-        noise-source: B4;out
+    switches:
+        antenna:
+            gpios:
+                '1': A3
+                '2': B3
+                reset: None
+        calibrator:
+            gpios:
+                '1': A7
+                '2': B0
+                '3': A6
+                '4': B1
+                '5': A5
+                '6': B2
+                reset: A4
+
+    aux-gpios:
+        noise-source: B4
 
     antenna:
-         switch: calibrator
-         position: 1
-         on: 15
+        switch: calibrator
+        position: 1
+        ontime: 15
+        aux: None
  
     noise:
-         switch: calibrator
-         position: 2
-         on: 15
+        switch: calibrator
+        position: 2
+        ontime: 15
+        aux: noise-source
 
     res-50:
-         switch: calibrator
-         position: 3
-         on: 15
+        switch: calibrator
+        position: 3
+        ontime: 15
+        aux: None
 
     res-100:
-         switch: calibrator
-         position: 4
-         on: 15
+        switch: calibrator
+        position: 4
+        ontime: 15
+        aux: None
 
     short:
-         switch: calibrator
-         position: 5
-         on: 15
+        switch: calibrator
+        position: 5
+        ontime: 15
+        aux: None
 
     vna:
-         switch: calibrator
-         position: 6
-         on: 15
+        switch: calibrator
+        position: 6
+        ontime: 15
+        aux: None
 
 temperature-sensors:
     read_interval: 10
