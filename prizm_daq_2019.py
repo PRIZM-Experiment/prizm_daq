@@ -7,14 +7,16 @@ import logging
 import os
 import subprocess
 import serial
-#import corr
+#import casperfpga
 import smbus
 import ds3231
+import mcp23017
 import thread
 import yaml
 import scio
 import iadc
 import numpy as nm
+import RPi.GPIO as GPIO
 from argparse import ArgumentParser
 from pynmea2 import nmea
 
@@ -34,7 +36,7 @@ def channel_callback(option, opt, value, parser):
         return
 
 #=========================================================
-def read_rtc_datetime(port="/dev/ttyUSB0", ctime=True):
+def read_gps_datetime(port="/dev/ttyUSB0", ctime=True):
     """Read date and time from the RTC from a serial connection
     """
     # Open a serial connection
@@ -185,8 +187,6 @@ def acquire_data(fpga,opts,ndat=2048,wait_for_new=True):
 		f_sys_clk2 = open(outsubdir+'/sys_clk2.raw','w')
 		f_sync_cnt1 = open(outsubdir+'/sync_cnt1.raw','w')
 		f_sync_cnt2 = open(outsubdir+'/sync_cnt2.raw','w')
-                f_pi_temp = open(outsubdir+'/pi_temp.raw','w')                
-		f_fpga_temp = open(outsubdir+'/fpga_temp.raw','w')
 
 		diff=not(opts.diff==0)
                 compress=opts.compress
@@ -267,92 +267,108 @@ def acquire_data(fpga,opts,ndat=2048,wait_for_new=True):
 		#return
 
 #=======================================================================
-def run_switch(opts, start_time=None):
+def run_switch(params, start_time=None):
+
         """Run the switch.  Cycle between sources by turning on appropriate
         Raspberry Pi GPIO pins for user-specified lengths of time.
-        - opts : options from parser
+        - params : options from parser
         - start_time : optional starting time stamp for the log file
         """
 
-        # Define dictionary of sources to switch between.  For each
-        # source, specify a two-element list consisting of GPIO pin number
-        # and number of MINUTES for source to remain selected.
-        srcs = {'antenna' : opts.antenna,
-                'res100' : opts.res100,
-                'res50' : opts.res50,
-                'short' : opts.short,
-                'noise' : opts.noise,
-                'open' : opts.open}
-
-        # Set GPIO mode for all selected sources
-        GPIO.setmode(GPIO.BCM)
-        GPIO.setup(opts.reset, GPIO.OUT)   
-        GPIO.output(opts.reset, GPIO.LOW)
-        GPIO.setup(opts.mosfet, GPIO.OUT)
-        GPIO.output(opts.mosfet, GPIO.LOW)
-        for src in opts.seq:
-                pin = srcs[src][0]
-                GPIO.setup(pin, GPIO.OUT)  # Define the pins as outputs
-                GPIO.output(pin, GPIO.LOW) # All pins set to LOW i.e. 0V
-                print 'GPIO pin', pin, 'set to output. Initial state:LOW'
         # Open log file
         if start_time is None:
                 start_time = datetime.datetime.utcnow().strftime('%Y%m%d_%H%M%S')
-        
-        while True:
-                tstart = time.time()
-                starttime = datetime.datetime.utcnow().strftime('%Y%m%d_%H%M%S')
-                outsubdir = opts.outdir + '/' + tfrag + '/' + str(nm.int64(tstart))
-                if not os.path.isdir(outsubdir):
-                        os.makedirs(outsubdir)
-                
-                compress=opts.compress
-                antenna =  scio.scio(outsubdir+'/antenna.scio',compress=compress)
-                res50 =  scio.scio(outsubdir+'/res50.scio',compress=compress)
-                res100 =  scio.scio(outsubdir+'/res100.scio',compress=compress)
-                short =  scio.scio(outsubdir+'/short.scio',compress=compress)
-                noise =  scio.scio(outsubdir+'/noise.scio',compress=compress)
-                open =  scio.scio(outsubdir+'/open.scio',compress=compress)
-                while time.time()-tstart < opts.tfile*60:
-                        for src in opts.seq:
-                                if src == 'antenna': arr=antenna
-                                if src == 'res50': arr=res50
-                                if src == 'res100': arr=res100
-                                if src == 'short': arr=short
-                                if src == 'noise' : arr=noise
-				if src == 'open' : arr=open
 
-                                pin = srcs[src][0]
-                                ontime = float(srcs[src][1]) * 60.   # Convert to seconds
-                                starttime = datetime.datetime.utcnow().strftime('%Y%m%d_%H%M%S')
-                                print 'Reset On'
-                                GPIO.output(opts.reset,1)
+        # Setup MCP23017 GPIO's as outputs
+        gpios=mcp23017.MCP23017(i2c_bus, 0x20)
+        for switch in params["switch-control"]["switches"].keys():
+                for gpio in params["switch-control"]["switches"][switch]["gpios"].keys():
+                        port = None
+                        pin = None
+                        if params["switch-control"]["switches"][switch]["gpios"][gpio] != "None":
+                        	port = params["switch-control"]["switches"][switch]["gpios"][gpio][0]
+                        	pin = params["switch-control"]["switches"][switch]["gpios"][gpio][1:]
+                                logging.debug("Setting port %s, pin %s to output"%(port, pin))
+                                gpios.set_gpio_direction(port, pin, False)
+
+        for aux_gpio in params["switch-control"]["aux-gpios"].keys():
+                port = params["switch-control"]["aux-gpios"][aux_gpio][0]
+                pin = params["switch-control"]["aux-gpios"][aux_gpio][1:]
+                logging.debug("Setting port %s, pin %s to output"%(port, pin))
+                gpios.set_gpio_direction(port, pin, False)
+
+        while True:
+		tstart = time.time()
+                tfrag=repr(tstart)[:5]
+                #starttime = datetime.datetime.utcnow()#.strftime('%Y%m%d_%H%M%S')
+                outsubdir = params["data_directory"]+'/switch_data/'+tfrag +'/' + str(nm.int64(tstart))
+                if not os.path.isdir(outsubdir):
+                	os.makedirs(outsubdir)
+
+                pos_scio_files = {}
+                for pos in params["switch-control"]["sequence"]:
+                        pos_scio_files[pos] = scio.scio(outsubdir+'/%s.scio'%(pos),
+                                                        compress=params["scio-files"]["compress"])
+
+                seq_list = params["switch-control"]["sequence"]
+                print(seq_list)
+                while time.time()-tstart < params["scio-files"]["file_time"]:
+                        seq = seq_list.pop(0)
+                        print(seq)
+                        which_switch = params["switch-control"][seq]["switch"]
+                        which_pos = str(params["switch-control"][seq]["position"])
+                        ontime = params["switch-control"][seq]["ontime"]
+                        print(which_switch, which_pos)
+                        port = params["switch-control"]["switches"][which_switch]["gpios"][which_pos][0]
+                        pin = params["switch-control"]["switches"][which_switch]["gpios"][which_pos][1:]
+                        starttime = datetime.datetime.utcnow().strftime('%Y%m%d_%H%M%S')
+                        logging.debug('Reset On')
+                        if params["switch-control"]["switches"][which_switch]["gpios"]["reset"] != "None":
+                                reset_port = params["switch-control"]["switches"][which_switch]["gpios"]["reset"][0]
+                                reset_pin = params["switch-control"]["switches"][which_switch]["gpios"]["reset"][1:]
+                                gpios.set_output_latch(reset_port, reset_pin, True)
                                 time.sleep(0.20)
-                                GPIO.output(opts.reset,0);time.sleep(0.20);print 'Reset off'
-                                # Special case for noise source: need to turn mosfet on as well
-                                if src == 'noise': GPIO.output(opts.mosfet,1); print 'mosfet on'
-                                # Set switch to the appropriate
-                                # source.  These are latching
-                                # switches, so just need to pulse the
-                                # pin...
-                                GPIO.output(pin,1);print '%s Src On'%src
-                                time.sleep(0.20)
-                                # ...and then immediately turn off again
-                                print '%s Src Off'%src
-                                GPIO.output(pin,0)
-                                # Record time stamps for how long
-                                # we're on this switch position.  Note
-                                # that we're using system time here,
-                                # will need to correct with RTC time
-                                # in post-processing.
-                                t_start=time.time()
-                                arr.append(nm.array([1,t_start]))
-                                time.sleep(ontime)
-                                if src == 'noise': GPIO.output(opts.mosfet,0); print 'mosfet off'
-                                t_stop=time.time()
-                                arr.append(nm.array([0,t_stop]))
-                                sys.stdout.flush()
-        return
+                                gpios.set_output_latch(reset_port, reset_pin, False)
+                                time.sleep(0.01)
+                        logging.debug('Reset off')
+                        # Special case for noise source: need to turn mosfet on as well
+                        if params["switch-control"][seq]["aux"] != "None":
+                                print(seq)
+                                aux = params["switch-control"][seq]["aux"]
+                                aux_port = params["switch-control"]["aux-gpios"][aux][0]
+                                aux_pin = params["switch-control"]["aux-gpios"][aux][1:]
+                                gpios.set_output_latch(aux_port, aux_pin, True)
+                                logging.debug('AUX %s on'%(aux))
+                        # Set switch to the appropriate
+                        # source.  These are latching
+                        # switches, so just need to pulse the
+                        # pin...
+                        print(port, pin)
+                        gpios.set_output_latch(port, pin, True)
+                        logging.debug('%s Source On'%(seq))
+                        time.sleep(0.20)
+                        # ...and then immediately turn off again
+                        logging.debug('%s Source Off'%(seq))
+                        gpios.set_output_latch(port, pin, False)
+                        # Record time stamps for how long
+                        # we're onu this switch position.  Note
+                        # that we're using system time here,
+                        # will need to correct with RTC time
+                        # in post-processing.
+                        t_start=time.time()
+                        pos_scio_files[seq].append(nm.array([1,t_start]))
+                        time.sleep(ontime)
+                        if params["switch-control"][seq]["aux"] != "None":
+                                aux = params["switch-control"][seq]["aux"]
+                                aux_port = params["switch-control"]["aux-gpios"][aux][0]
+                                aux_pin = params["switch-control"]["aux-gpios"][aux][1:]
+                                gpios.set_output_latch(aux_port, aux_pin, False)
+                                logging.debug('AUX %s off'%(aux))
+                        t_stop=time.time()
+                        pos_scio_files[seq].append(nm.array([0,t_stop]))
+                        seq_list.append(seq)
+                        print(seq_list)
+        return None
 
 #=======================================================================
 def read_temperatures(params, start_time=None):
@@ -495,14 +511,18 @@ if __name__ == '__main__':
         # Acquire data
         logging.info('Writing data to top level location %s' %(params["data_directory"]))
 	try:
+                # MCP23017 reset pin is wired to RPI GPIO Pin 21. Needs to be high for normal operation
+		GPIO.setmode(GPIO.BCM)
+		GPIO.setup(21, GPIO.OUT, initial=GPIO.LOW)
+                GPIO.output(21, GPIO.HIGH)
                 # Start up switch operations and temperature logging, use same starting time stamp for both
                 start_time = datetime.datetime.utcnow().strftime('%Y%m%d_%H%M%S')
-                # p1 = thread.start_new_thread( run_switch, (opts, start_time) )
+                p1 = thread.start_new_thread(run_switch, (params, start_time) )
                 # Tiny sleep statement to avoid directory creation collision
-                # time.sleep(2)
-                p2 = thread.start_new_thread(read_temperatures, (params, start_time))
-	        # acquire_data_prizm(fpga, opts, ndat=opts.nchan)
+                #time.sleep(2)
+                #p2 = thread.start_new_thread(read_temperatures, (params, start_time))
+	        #acquire_data_prizm(fpga, opts, ndat=opts.nchan)
                 time.sleep(10000)
 	finally:
+		GPIO.cleanup()
 		logging.info('Terminating DAQ script at %s'%(str(datetime.datetime.now().strftime("%Y-%m-%d_%H-%M-%S"))))
-
