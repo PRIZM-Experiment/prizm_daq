@@ -16,7 +16,7 @@ accumulation-length: 393216
 
 log-level: 10
 
-data-directory: /home/pi/data_70MHz
+data-directory: /home/pi/data_100MHz
 
 scio-files:
     diff: False
