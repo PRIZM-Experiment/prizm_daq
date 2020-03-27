@@ -7,3 +7,6 @@
 [submodule "python-mcp23017"]
 	path = python-mcp23017
 	url = git@github.com:nivekg/python-mcp23017.git
+[submodule "pyadf435x"]
+	path = pyadf435x
+	url = git@github.com:jhol/pyadf435x.git
