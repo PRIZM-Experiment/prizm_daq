@@ -17,11 +17,9 @@ if [ "$_IP" ]; then
   printf "My IP address is %s\n" "$_IP"
 fi
 
-# Sleep for a brief period in order to allow the GPS antenna to get a fix
-sleep 2m
-
 # Set Clock to 500 MHz and power output to -1 dBm
 python3 /home/pi/prizm_daq/pyadf435x/adf435xctl --freq=500 --output-power=-1
+sleep 30
 
 # Automagically start PRIZM DAQ
 /home/pi/prizm_daq/supervisord/run_daq_supervised.py &
