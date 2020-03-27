@@ -12,14 +12,14 @@ class Iadc(object):
         
 
     def ddrb_reset(self):
-        self.fpga.write_int(self.reg, 0, offset=1, blindwrite=True)
-        self.fpga.write_int(self.reg, 1, offset=1, blindwrite=True)
-        self.fpga.write_int(self.reg, 0, offset=1, blindwrite=True)
+        self.fpga.write_int(self.reg, 0, word_offset=1, blindwrite=True)
+        self.fpga.write_int(self.reg, 1, word_offset=1, blindwrite=True)
+        self.fpga.write_int(self.reg, 0, word_offset=1, blindwrite=True)
 
     def mmcm_reset(self):
-        self.fpga.write_int(self.reg, 0, offset=2, blindwrite=True)
-        self.fpga.write_int(self.reg, 1, offset=2, blindwrite=True)
-        self.fpga.write_int(self.reg, 0, offset=2, blindwrite=True)
+        self.fpga.write_int(self.reg, 0, word_offset=2, blindwrite=True)
+        self.fpga.write_int(self.reg, 1, word_offset=2, blindwrite=True)
+        self.fpga.write_int(self.reg, 0, word_offset=2, blindwrite=True)
 
     def _set_3wire(self, mode, clk, ldn, data):
         # bit mappings
