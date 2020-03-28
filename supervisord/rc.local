@@ -22,6 +22,6 @@ python3 /home/pi/prizm_daq/pyadf435x/adf435xctl --freq=500 --output-power=-1
 sleep 30
 
 # Automagically start PRIZM DAQ
-/home/pi/prizm_daq/supervisord/run_daq_supervised.py &
+/home/pi/prizm_daq/supervisord/run_daq_supervised.py /home/pi/prizm_daq/supervisord/supervisord_70MHz.conf &
 
 exit 0
