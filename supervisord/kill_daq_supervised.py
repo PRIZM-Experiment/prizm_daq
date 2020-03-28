@@ -36,11 +36,10 @@ if __name__ == '__main__':
             killpid(pid)
     # If there are any DAQ copies floating around, kill those too
     print 'Searching for extraneous DAQ processes'
-    for daq in ['prizm_daq_2019.py', 'prizm_housekeeping.py']:
-        txt = subprocess.Popen(['pgrep','-f',daq], stdout=subprocess.PIPE).communicate()[0]
-        lines = txt.split('\n')
-        for line in lines:
-            pid = line.strip()
-            if len(pid) > 0:
-                print 'Looks like extraneous DAQ is running under process ID',txt
-                killpid(pid)
+    txt = subprocess.Popen(['pgrep','-f', 'prizm_daq.py'], stdout=subprocess.PIPE).communicate()[0]
+    lines = txt.split('\n')
+    for line in lines:
+        pid = line.strip()
+        if len(pid) > 0:
+            print 'Looks like extraneous DAQ is running under process ID',txt
+            killpid(pid)
