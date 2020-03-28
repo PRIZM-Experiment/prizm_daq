@@ -68,7 +68,7 @@ def initialize(params):
 
         # Connect to the SNAP board configure spectrometer settings
         logging.info('Connecting to server %s:%d'%(params['snap-board']['ip'], params['snap-board']['port']))
-        fpga = casperfpga.CasperFpga(host=params['snap-board']['ip'], port=params['snap-board']['port'], logger=logging)
+        fpga = casperfpga.CasperFpga(host=params['snap-board']['ip'], port=params['snap-board']['port'])
         time.sleep(1)  # important for live connection reporting
         if fpga.is_connected():
 	        logging.info('Connected!')
@@ -102,13 +102,13 @@ def initialize(params):
 #=======================================================================
 def get_adc_stats(fpga):
         adc_stats={}
-        for i in ['0', '1']:
+        for i in [0, 1]:
             data=fpga.snapshots['snapshot_ADC%d'%(i)].read(man_valid=True, man_trig=True)['data']['data']
-            data=numpy.asarray(data)
+            data=nm.asarray(data)
             data[data>2**7]=data[data>2**7]-2**8
-            mean=numpy.mean(data)
-            rms=numpy.sqrt(numpy.mean(data**2))
-            bits_used=numpy.log2(rms)
+            mean=nm.mean(data)
+            rms=nm.sqrt(nm.mean(data**2))
+            bits_used=nm.log2(rms)
             adc_stats['ADC%d'%(i)]={'raw':data, 'mean':mean, 'rms':rms, 'bits_used':bits_used}
         return adc_stats
 #=======================================================================
@@ -525,7 +525,7 @@ if __name__ == '__main__':
                 fpga = initialize(params)
                 time.sleep(0.5)
                 adc_bits = get_adc_stats(fpga)
-                logging.info("Bits used: ADC-I=%.2f, ADC-Q=%.2f"%(adc_bits["adc_i"]["bits_used"], adc_bits["adc_i"]["bits_used"]))
+                logging.info("Bits used: ADC0=%.2f, ADC1=%.2f"%(adc_bits["ADC0"]["bits_used"], adc_bits["ADC1"]["bits_used"]))
                 # Start up switch operations and temperature logging, use same starting time stamp for both
                 start_time = datetime.datetime.utcnow().strftime('%Y%m%d_%H%M%S')
                 p1 = thread.start_new_thread(run_switch, (params, start_time))
