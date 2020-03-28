@@ -2,7 +2,7 @@ snap-board:
     ip: 127.0.0.1
     port: 7147
 
-firmware: ./firmware/extadc_snap_spec_2020-03-22_0047.fpg
+firmware: /home/pi/prizm_daq/firmware/extadc_snap_spec_2020-03-22_0047.fpg
 
 fft-channels: 4096
 
