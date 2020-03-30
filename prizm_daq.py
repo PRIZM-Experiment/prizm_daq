@@ -105,8 +105,12 @@ def get_adc_stats(fpga):
         for i in [0, 1]:
             data=fpga.snapshots['snapshot_ADC%d'%(i)].read(man_valid=True, man_trig=True)['data']['data']
             data=nm.asarray(data)
+            print(data)
             data[data>2**7]=data[data>2**7]-2**8
+            print(data)
             mean=nm.mean(data)
+            print(mean)
+            print(nm.mean(data**2))
             rms=nm.sqrt(nm.mean(data**2))
             bits_used=nm.log2(rms)
             adc_stats['ADC%d'%(i)]={'raw':data, 'mean':mean, 'rms':rms, 'bits_used':bits_used}
@@ -374,7 +378,7 @@ def read_temperatures(fpga, params, start_time=None):
 			# Read Pi time (system and RTC) and temperature
 			time_start_sys = time.time()
 			time_start_gps = read_gps_datetime()
-                        time_start_rtc = rtc.get_datetime().timestamp()
+                        time_start_rtc = rtc.timestamp()
                         nm.array(time_start_sys).tofile(f_therms_time_sys_start)
                         nm.array(time_start_gps).tofile(f_therms_time_gps_start)
 	 		nm.array(time_start_rtc).tofile(f_therms_time_rtc_start)
@@ -382,7 +386,7 @@ def read_temperatures(fpga, params, start_time=None):
                         pi_temp = nm.int32(pi_temperature)/1000
 	 		nm.array(pi_temp).tofile(f_pi_temp)
                         fpga_temp = get_fpga_temp(fpga)
-                        nm.array(fpga_temp).tofile(f_fpga_tempp)
+                        nm.array(fpga_temp).tofile(f_fpga_temp)
 			# Read one-wire sensors
 	 		logging.debug('Starting one-wire read')
                         for i,tempsensor in enumerate(tempsensors):
@@ -407,7 +411,7 @@ def read_temperatures(fpga, params, start_time=None):
 					logging.warning('%s, %s not found'%(id, tag))
 		        time_stop_sys = time.time()
 			time_stop_gps = read_gps_datetime()
-                        time_stop_rtc = rtc.get_datetime().timestamp()
+                        time_stop_rtc = rtc.timestamp()
                         nm.array(time_stop_sys).tofile(f_therms_time_sys_stop)
                         nm.array(time_stop_gps).tofile(f_therms_time_gps_stop)
 	 		nm.array(time_stop_rtc).tofile(f_therms_time_rtc_stop)
@@ -530,7 +534,7 @@ if __name__ == '__main__':
                 start_time = datetime.datetime.utcnow().strftime('%Y%m%d_%H%M%S')
                 p1 = thread.start_new_thread(run_switch, (params, start_time))
                 # Tiny sleep statement to avoid directory creation collision
-                p2 = thread.start_new_thread(read_temperatures, (params, start_time))
+                p2 = thread.start_new_thread(read_temperatures, (fpga, params, start_time))
                 acquire_data(fpga, params)
 	except:
                 logging.exception('Exception has occured')
