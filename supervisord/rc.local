@@ -17,9 +17,11 @@ if [ "$_IP" ]; then
   printf "My IP address is %s\n" "$_IP"
 fi
 
-# Set Clock to 500 MHz and power output to -1 dBm
-python3 /home/pi/prizm_daq/pyadf435x/adf435xctl --freq=500 --output-power=-1
-sleep 30
+# Set the RPi system clock from ds3231 RTC
+python /home/pi/prizm_daq/ds3231.py --i2c-bus 1 --set-system-clock-from-rtc
+
+# Startup SNAP BORPH server
+/etc/init.d/tcpborphserver start
 
 # Automagically start PRIZM DAQ
 /home/pi/prizm_daq/supervisord/run_daq_supervised.py /home/pi/prizm_daq/supervisord/supervisord_70MHz.conf &
