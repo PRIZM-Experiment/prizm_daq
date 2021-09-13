@@ -18,12 +18,15 @@ if [ "$_IP" ]; then
 fi
 
 # Set the RPi system clock from ds3231 RTC
-python /home/pi/prizm_daq/ds3231.py --i2c-bus 1 --set-system-clock-from-rtc
+# python /home/pi/prizm_daq/ds3231.py --i2c-bus 1 --set-system-clock-from-rtc
 
 # Startup SNAP BORPH server
 /etc/init.d/tcpborphserver start
 
-# Automagically start PRIZM DAQ
-/home/pi/prizm_daq/supervisord/run_daq_supervised.py /home/pi/prizm_daq/supervisord/supervisord_70MHz.conf &
+# Automagically start PRIZM-70 DAQ
+/home/pi/prizm_daq/supervisord/run_daq_supervised.py /home/pi/prizm_daq/supervisord/supervisord_70MHz.conf /home/pi/data_70MHz/
+
+# Automagically start PRIZM-100 DAQ
+# /home/pi/prizm_daq/supervisord/run_daq_supervised.py /home/pi/prizm_daq/supervisord/supervisord_100MHz.conf /home/pi/data_100MHz/
 
 exit 0
