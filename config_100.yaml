@@ -1,54 +1,44 @@
 snap-board:
     ip: 127.0.0.1
     port: 7147
+    firmware: /home/pi/prizm_daq/firmware/extadc_snap_spec_2020-03-22_0047.fpg
+    fft-channels: 4096
+    fft-shift: 0xffffffff
+    accumulation-length: 393216
 
-firmware: ./firmware/extadc_snap_spec_2020-03-22_0047.fpg
+logging:
+    level: 10
 
-fft-channels: 4096
-
-fft-shift: 0xffffffff
-
-tvg:
-    enable: False
-    data: test_data.npy
-
-accumulation-length: 393216
-
-log-level: 10
-
-data-directory: /home/pi/data_100MHz
+directories:
+    top: /home/pi/data_100MHz
+    temperatures: temperatures
+    switch: switch
 
 scio-files:
     diff: False
     compress: bzip2
-    file_time: 3600
+    file-time: 3600
 
 switch-control:
     sequence:
-        - antenna 
-        - noise 
-        - res50 
-        - res100 
-        - short 
+        - antenna
+        - noise
+        - res50
+        - res100
+        - short
         - open
-        - antenna_vna
-        - antenna_switch
 
     switches:
-        antenna:
-            gpios:
-                '1': A3
-                '2': B3
-                reset: None
         calibrator:
+            latching: True
             gpios:
-                '1': A7
+                '1': B2
                 '2': B0
                 '3': A6
                 '4': B1
                 '5': A5
-                '6': B2
-                reset: A4
+                '6': A7 
+                'r': A4
 
     aux-gpios:
         noise-source: B4
@@ -56,90 +46,66 @@ switch-control:
     antenna:
         switch: calibrator
         position: 1
-        ontime: 5
+        ontime: 1800
         aux: None
  
     noise:
         switch: calibrator
         position: 2
-        ontime: 5
-        aux: noise-source
+        ontime: 60
+        aux: None
 
     res50:
         switch: calibrator
         position: 3
-        ontime: 5
+        ontime: 60
         aux: None
 
     res100:
         switch: calibrator
         position: 4
-        ontime: 5
+        ontime: 60
         aux: None
 
     short:
         switch: calibrator
         position: 5
-        ontime: 5
+        ontime: 60
         aux: None
 
     open:
         switch: calibrator
         position: 6
-        ontime: 5
-        aux: None
-
-    antenna_vna:
-        switch: antenna
-        position: 1
-        ontime: 5
-        aux: None
-
-    antenna_switch:
-        switch: antenna
-        position: 2
-        ontime: 5
+        ontime: 60
         aux: None
 
 temperature-sensors:
     read_interval: 10
-    temp_1:
-        id: 28-00000ade32e6
-        tag: 70_snapbox
-        description: 70 MHz SNAP box ambient danglemometer
-    temp_2:
-        id: 28-000007a17188
-        tag: 70_ambient
-        description: 70 MHz ambient sensor (mounted on side NS)
-    temp_3:
-        id: 28-000007a1d71c
-        tag: 70EW_top_lna
-        description: 70 MHz side EW top LNA
-    temp_4:
-        id: 28-000007a0406d
-        tag: 70EW_bot_lna
-        description: 70 MHz side EW bottom LNA
-    temp_5:
-        id: 28-000007a10a52
-        tag: 70EW_switch
-        description: 70 MHz side EW switch
-    temp_6:
-        id: 28-0000079fc869
-        tag: 70EW_noise
-        description: 70 MHz side EW noise diode
-    temp_7:
-        id: 28-000007a05bc0
-        tag: 70NS_top_lna
-        description: 70 MHz side NS top LNA
-    temp_8:
-        id: 28-000007a16f70
-        tag: 70NS_bot_lna
-        description: 70 MHz side NS bottom LNA
-    temp_9:
-        id: 28-000007a20adc
-        tag: 70NS_switch
-        description: 70 MHz side NS switch
-    temp_10:
-        id: 28-000007a0bad0
-        tag: 70NS_noise
-        description: 70 MHz side NS noise diode
+    sensors:
+        100_ambient:
+            id: 28-000007a1451a
+            description: 100 MHz ambient sensor (mounted on side EW)
+        100EW_top_lna:
+            id: 28-000007a05bc0
+            description: 100 MHz side EW top LNA
+        100EW_bot_lna:
+            id: 28-0000079fff75
+            description: 100 MHz side EW bottom LNA
+        100EW_switch:
+            id: 28-000007a10a52
+            description: 100 MHz side EW switch
+        100EW_noise:
+            id: 28-000007a0bad0
+            description: 100 MHz side EW noise diode
+        100NS_top_lna:
+            id: 28-000007a0406d
+            description: 100 MHz side NS top LNA
+        100NS_bot_lna:
+            id: 28-000007a16f70
+            description: 100 MHz side NS bottom LNA
+        100NS_switch:
+            id: 28-000007a12463
+            description: 100 MHz side NS switch
+        100NS_noise:
+            id: 28-000007a14004
+            description: 100 MHz side NS noise diode
