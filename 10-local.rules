@@ -1,0 +1,1 @@
+SUBSYSTEMS=="usb", ENV{DEVTYPE}=="usb_device", ATTRS{idVendor}=="1dd2", ATTRS{idProduct}=="2211", GROUP="plugdev", MODE="0777"
