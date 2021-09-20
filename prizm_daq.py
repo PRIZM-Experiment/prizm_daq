@@ -20,6 +20,7 @@ import numpy as nm
 import RPi.GPIO as GPIO
 from argparse import ArgumentParser
 import lbtools_l
+import gittools
 
 #=======================================================================
 def initialize(parameters):
@@ -407,6 +408,8 @@ if __name__ == '__main__':
     logger.addHandler(f_handler)
 
     # Log run-time options
+    logging.info("Starting PRIZM DAQ at "+time.ctime())
+    logging.info("Git Hash: "+gittools.get_hash())
     logging.info('======= Run-time options =======')
     logging.info('SNAP-BOARD:')
     logging.info('%s%s = %s'%(' '*4, 'IP', parameters['snap-board']['ip']))
