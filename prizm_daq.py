@@ -143,11 +143,7 @@ def acquire_data(fpga, parameters, wait_for_new=True):
             # stamps for both start and end of reads.
             
             t1_sys = time.time()
-            try:
-                t1_gps = lbtools_l.lb_read()[0]
-            except:
-                logging.error("Failed to read time from gps")
-                t1_gps = 0
+            t1_gps = lbtools_l.lb_read()[0]
             t1_rtc = rtc.timestamp()
             fft_shift = fpga.read_uint('fft_shift')
             fft_of_cnt = fpga.read_int('fft_of')  #this used to be fft_of_cnt
@@ -158,11 +154,7 @@ def acquire_data(fpga, parameters, wait_for_new=True):
 
             acc_cnt_end = fpga.read_int('acc_cnt')
             t2_sys = time.time()
-            try:
-                t2_gps = lbtools_l.lb_read()[0]
-            except:
-                logging.error("Failed to read time from gps")
-                t2_gps = 0
+            t2_gps = lbtools_l.lb_read()[0]
             t2_rtc = rtc.timestamp()
             sys_clk2 = fpga.read_int('sys_clkcounter') 
             sync_cnt2 = fpga.read_int('sync_cnt')
@@ -322,11 +314,7 @@ def read_temperatures(fpga, parameters, start_time=None):
         while time.time()-tstart < parameters['scio-files']['file-time']:
             # Read Pi time (system and RTC) and temperature
             time_start_sys = time.time()
-            time_start_gps = 0
-            try:
-	        time_start_gps = lbtools_l.lb_read()[0]
-            except:
-	        logging.error("Failed to read time from gps")
+            time_start_gps = lbtools_l.lb_read()[0]
             time_start_rtc = rtc.timestamp()
             pi_temperature = subprocess.check_output(['cat', '/sys/class/thermal/thermal_zone0/temp'])
             pi_temp = nm.int32(pi_temperature)/1000.0
@@ -354,13 +342,8 @@ def read_temperatures(fpga, parameters, start_time=None):
 		    else:
 	                logging.warning('%s, %s not found'%(parameters["temperature-sensors"]["sensors"][i]["id"], i))
             time_stop_sys = time.time()
-            time_stop_gps = 0
-            try:
-	        time_stop_gps = lbtools_l.lb_read()[0]
-            except:
-	        logging.error("Failed to read time from gps, failing back to RTC")
+            time_stop_gps = lbtools_l.lb_read()[0]
             time_stop_rtc = rtc.timestamp()
-            
             nm.array(time_start_sys).tofile(f_therms["time_start_sys_therms"])
             nm.array(time_start_gps).tofile(f_therms["time_start_gps_therms"])
 	    nm.array(time_start_rtc).tofile(f_therms["time_start_rtc_therms"])
@@ -437,14 +420,10 @@ if __name__ == '__main__':
         logging.info("%s%s = %s"%(' '*8, 'AUX', parameters["switch-control"][seq]["aux"]))
     logging.info("TEMPERATURE-SENSORS:")
     logging.info('%s%s = %s'%(' '*4, 'READ-INTERVAL', parameters["temperature-sensors"]["read_interval"]))
-    temp_keys = parameters["temperature-sensors"].keys()
-    temp_keys.sort()
-    for key in temp_keys:
-        if key[:5] == "temp_":
-            logging.info("%s%s:"%(' '*4, key))
-            logging.info('%s%s = %s'%(' '*8, 'ID', parameters["temperature-sensors"][key]["id"]))
-            logging.info('%s%s = %s'%(' '*8, 'TAG', parameters["temperature-sensors"][key]["tag"]))
-            logging.info('%s%s = %s'%(' '*8, 'DESCRIPTION', parameters["temperature-sensors"][key]["description"]))
+    for key in parameters["temperature-sensors"]["sensors"].keys():
+        logging.info("%s%s:"%(' '*4, key))
+        logging.info('%s%s = %s'%(' '*8, 'ID', parameters["temperature-sensors"]["sensors"][key]["id"]))
+        logging.info('%s%s = %s'%(' '*8, 'DESCRIPTION', parameters["temperature-sensors"]["sensors"][key]["description"]))
     logging.info('SCIO-FILES:')
     logging.info('%s%s = %s'%(' '*4, 'DIFF', parameters['scio-files']['diff']))
     logging.info('%s%s = %s'%(' '*4, 'COMPRESS', parameters['scio-files']['compress']))
