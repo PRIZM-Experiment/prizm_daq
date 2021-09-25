@@ -14,7 +14,6 @@ if __name__ == "__main__":
 
     t_start = str(datetime.datetime.now().strftime("%Y-%m-%d_%H-%M-%S"))
     if not os.path.exists(args.log_dir+"/supervisord_logs/"+t_start):
-        print(args.log_dir+"/supervisord_logs/"+t_start)
         os.makedirs(args.log_dir+"/supervisord_logs/"+t_start)
 
     logger = logging.getLogger()
@@ -36,7 +35,7 @@ if __name__ == "__main__":
         exit(0)
     else:
         logging.info("Looks like no DAQ process is running, trying to start one now.")
-        cmd = 'supervisord -c '+args.config_file+' -d '+args.log_dir+"/supervisord_logs/"+t_start+' -l '+args.log_dir+"/supervisord_logs/"+t_start+"/supervisord.log -j "+args.log_dir+"/supervisord_logs/"+t_start+"/supervisord.pid"
+        cmd = 'supervisord -c '+args.config_file+' -d /home/pi/prizm_daq/ -q '+args.log_dir+"/supervisord_logs/"+t_start+' -l '+args.log_dir+"/supervisord_logs/"+t_start+"/supervisord.log -j "+args.log_dir+"/supervisord_logs/"+t_start+"/supervisord.pid"
         logging.info('Running cmd: '+cmd)
         os.system(cmd)
         logging.info('Started supervised DAQ process')

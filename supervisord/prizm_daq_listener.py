@@ -27,24 +27,25 @@ def main():
         write_stderr(line)
         if line.find('PROCESS_STATE_EXITED')>-1:
             ncrash=ncrash+1
+
+            # read event payload and print it to stderr
+            headers = dict([ x.split(':') for x in line.split() ])
+            data = sys.stdin.read(int(headers['len']))
+            write_stderr(data)
+            f.write('ncrash=' + repr(ncrash) + ' with event  ' + line)
+            #f.write('event was ' + line)
+            f.flush()
+            # transition from READY to ACKNOWLEDGED
+            write_stdout('RESULT 2\nOK')
+
             if ncrash==max_crash:
                 f.write('ncrash=' + repr(ncrash) + ' with event  ' + line)
                 f.write('Reached maximum number of allowed crashes, time to reboot\n')
-                f.write('Current time is '+datetime.datetime.utcnow().strftime('%Y%m%d_%H%M%S')+' \n')
+                f.write('Current time is '+datetime.datetime.utcnow().strftime('%Y-%m-%d %H:%M:%S')+' \n')
                 f.flush()
                 f.close()
                 cmd = 'sudo reboot'  # Need to test this and see if we can do as not root
                 os.system(cmd)
-
-        # read event payload and print it to stderr
-        headers = dict([ x.split(':') for x in line.split() ])
-        data = sys.stdin.read(int(headers['len']))
-        write_stderr(data)
-        f.write('ncrash=' + repr(ncrash) + ' with event  ' + line)
-        #f.write('event was ' + line)
-        f.flush()
-        # transition from READY to ACKNOWLEDGED
-        write_stdout('RESULT 2\nOK')
 
 if __name__ == '__main__':
     main()
