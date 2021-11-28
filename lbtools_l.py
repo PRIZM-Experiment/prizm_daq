@@ -105,9 +105,9 @@ def lb_read(ntry=1000, timeout=1000):
     Returns Linux timestamp, (precision, validity, lon, lat, alt), and datetime object tuple
     """
 
-    tstamp = None
-    auxdat = None
-    gpstime = None
+    tstamp = 0
+    auxdat = (-1, -1, -1, -1, -1)
+    gpstime = datetime.datetime(1980, 1, 5, 0, 0, 0)
     
     VENDOR_LB = 0x1DD2     # Leo Bodnar's Vendor ID
     PRODUCT_MGPS = 0x2211  # Mini GPS product ID
