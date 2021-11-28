@@ -15,18 +15,26 @@ if __name__ == "__main__":
     rtc = ds3231.DS3231(bus)
     lbtools_l.lb_set()
 
-    print("Local current time:", datetime.datetime.now())
-    print("RTC current time:", rtc.get_datetime())
-    print("GPS current time:", lbtools_l.lb_read()[1])
-
     if args.set_gps_time_to_rtc:
         print("Setting RTC to GPS time")
-        rtc.set_datetime(lbtools_l.lb_read()[1])
+        rtc.set_datetime(lbtools_l.lb_read()[2])
 
     if args.monitor:
         while True:
             lt = datetime.datetime.now()
             rt = rtc.get_datetime()
-            gt = lbtools_l.lb_read()[1]
-            print("Local:", lt, "RTC:", rt, "GPS:", gt, "Diff (Local-RTC):", lt-rt, "DIFF (RTC-GPS):", rt-gt)
+            gt = lbtools_l.lb_read()[2]
+            print("Local:", lt.strftime("%Y-%m-%d %H:%M:%S"))
+            print("RTC:", rt.strftime("%Y-%m-%d %H:%M:%S"))
+            print("GPS:", gt.strftime("%Y-%m-%d %H:%M:%S"))
+            print("Diff (Local-RTC):", (lt-rt).total_seconds())
+            print("Diff (RTC-GPS):", (rt-gt).total_seconds())
             time.sleep(5)
+
+    lt = datetime.datetime.now()
+    rt = rtc.get_datetime()
+    gt = lbtools_l.lb_read()[2]
+
+    print("Local current time:", lt.strftime("%Y-%m-%d %H:%M:%S"))
+    print("RTC current time:", rt.strftime("%Y-%m-%d %H:%M:%S"))
+    print("GPS current time:", gt.strftime("%Y-%m-%d %H:%M:%S"))
