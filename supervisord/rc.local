@@ -18,7 +18,7 @@ if [ "$_IP" ]; then
 fi
 
 # Set the RPi system clock from ds3231 RTC
-# python /home/pi/prizm_daq/ds3231.py --i2c-bus 1 --set-system-clock-from-rtc
+python /home/pi/prizm_daq/ds3231.py --i2c-bus 1 --set-system-clock-from-rtc
 
 # Startup SNAP BORPH server
 /etc/init.d/tcpborphserver start
