@@ -11,7 +11,7 @@ import casperfpga
 import smbus
 import ds3231
 import mcp23017
-import thread
+import threading
 import yaml
 import scio
 import iadc
@@ -183,6 +183,8 @@ def acquire_data(fpga, parameters, wait_for_new=True):
 
             for hk_f in hk_p.keys():
                 hk_p[hk_f].flush()
+        for hk_f in hk_p.keys():
+            hk_p[hk_f].close()
     return None
 #=======================================================================
 def run_switch(parameters, start_time=None):
@@ -456,12 +458,26 @@ if __name__ == '__main__':
         logging.info("Bits used: ADC0=%.2f, ADC1=%.2f"%(adc_bits["ADC0"]["bits_used"], adc_bits["ADC1"]["bits_used"]))
         # Start up switch operations and temperature logging, use same starting time stamp for both
         start_time = datetime.datetime.utcnow().strftime('%Y%m%d_%H%M%S')
-        p1 = thread.start_new_thread(run_switch, (parameters, start_time))
-        p2 = thread.start_new_thread(read_temperatures, (fpga, parameters, start_time))
-        acquire_data(fpga, parameters)
+        t1 = threading.Thread(target=run_switch, args=(parameters, start_time, )) #, daemon=True)
+        t2 = threading.Thread(target=read_temperatures, args=(fpga, parameters, start_time, )) #, daemon=True)
+        t3 = threading.Thread(target=acquire_data, args=(fpga, parameters, )) #, daemon=True)
+        t1.start()
+        t2.start()
+        t3.start()
+        while True:
+            if not(t1.isAlive() and t2.isAlive() and t3.isAlive()):
+                if not t1.isAlive():
+                    logging.critical("run_switch is Dead")
+                if not t2.isAlive():
+                    logging.critical("read_temperature is Dead")
+                if not t3.isAlive():
+                    logging.critical("acquire data is Dead")
+                break
+            time.sleep(1)
     except Exception as e:
         logging.error('An exception has occured:')
         logging.error(e.message)
     finally:
         GPIO.cleanup()
         logging.info('Terminating DAQ script at %s'%(str(datetime.datetime.now().strftime("%Y-%m-%d_%H-%M-%S"))))
+        subprocess.call("sudo pkill -f prizm_daq.py", shell=True).wait()
